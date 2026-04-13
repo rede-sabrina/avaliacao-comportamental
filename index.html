@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Avaliação Comportamental — Operador de Caixa</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f0f13;
+  --surface: #17171e;
+  --surface2: #1e1e28;
+  --border: #2a2a38;
+  --accent: #f0b429;
+  --accent2: #e05c2a;
+  --green: #34c77b;
+  --red: #e05c5c;
+  --yellow: #f0b429;
+  --text: #e8e4dc;
+  --muted: #7a7590;
+  --light: #b0abc8;
+  --radius: 12px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Sora', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* ── PROGRESS BAR ── */
+#progress-bar {
+  position: fixed; top:0; left:0; right:0; z-index:100;
+  height: 3px;
+  background: var(--border);
+}
+#progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent2), var(--accent));
+  width: 0%;
+  transition: width .4s ease;
+}
+
+/* ── SCREENS ── */
+.screen { display:none; min-height:100vh; }
+.screen.active { display:flex; flex-direction:column; }
+
+/* ── INTRO ── */
+#screen-intro {
+  justify-content: center;
+  align-items: center;
+  padding: 2rem 1.2rem;
+  position: relative;
+  overflow: hidden;
+}
+#screen-intro::before {
+  content:'';
+  position:absolute; inset:0;
+  background:
+    radial-gradient(ellipse at 10% 20%, rgba(240,180,41,.08) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 80%, rgba(224,92,42,.08) 0%, transparent 55%);
+  pointer-events:none;
+}
+.intro-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2.8rem 2rem;
+  max-width: 520px;
+  width: 100%;
+  text-align: center;
+  position: relative;
+  z-index:1;
+}
+.logo-badge {
+  display:inline-flex; align-items:center; gap:.5rem;
+  background: rgba(240,180,41,.12);
+  border: 1px solid rgba(240,180,41,.25);
+  border-radius: 20px;
+  padding: .35rem 1rem;
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 1.8rem;
+}
+.intro-card h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.7rem, 5vw, 2.4rem);
+  line-height: 1.2;
+  margin-bottom: .8rem;
+}
+.intro-card h1 em { font-style: italic; color: var(--accent); }
+.intro-card p {
+  color: var(--light);
+  font-size: .88rem;
+  margin-bottom: 2rem;
+  max-width: 380px;
+  margin-left: auto; margin-right: auto;
+}
+.meta-list {
+  display: flex; gap: 1rem; justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+}
+.meta-item {
+  display:flex; align-items:center; gap:.4rem;
+  font-size: .78rem; color: var(--muted);
+}
+.meta-item span.dot {
+  width: 6px; height:6px; border-radius:50%;
+  background: var(--accent);
+  flex-shrink:0;
+}
+
+/* name input */
+.name-input-wrap {
+  margin-bottom: 1.4rem;
+  text-align: left;
+}
+.name-input-wrap label {
+  display:block;
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  margin-bottom: .5rem;
+}
+.name-input-wrap input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .85rem 1rem;
+  font-family: 'Sora', sans-serif;
+  font-size: .95rem;
+  color: var(--text);
+  outline: none;
+  transition: border-color .2s;
+}
+.name-input-wrap input:focus { border-color: var(--accent); }
+.name-input-wrap input::placeholder { color: var(--muted); }
+
+/* ── BUTTONS ── */
+.btn-primary {
+  display: inline-flex; align-items:center; gap:.6rem;
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  color: #0f0f13;
+  font-family: 'Sora', sans-serif;
+  font-size: .9rem;
+  font-weight: 700;
+  padding: .9rem 2rem;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: opacity .2s, transform .1s;
+  width: 100%;
+  justify-content: center;
+  letter-spacing: .02em;
+}
+.btn-primary:hover { opacity: .9; transform: translateY(-1px); }
+.btn-primary:active { transform: translateY(0); }
+.btn-primary:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+.btn-secondary {
+  display: inline-flex; align-items:center; gap:.5rem;
+  background: transparent;
+  color: var(--light);
+  font-family: 'Sora', sans-serif;
+  font-size: .85rem;
+  font-weight: 500;
+  padding: .7rem 1.4rem;
+  border: 1px solid var(--border);
+  border-radius: 50px;
+  cursor: pointer;
+  transition: border-color .2s, color .2s;
+}
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── QUIZ ── */
+#screen-quiz { padding: 5rem 1.2rem 3rem; align-items:center; }
+.quiz-inner { max-width: 600px; width:100%; }
+
+.step-indicator {
+  display:flex; align-items:center; gap:.8rem;
+  margin-bottom: 2rem;
+}
+.step-num {
+  font-size: .75rem; color: var(--muted);
+  font-weight: 600;
+}
+.step-dots {
+  display:flex; gap:.3rem; flex:1;
+}
+.step-dot {
+  height: 3px; flex:1; border-radius:3px;
+  background: var(--border);
+  transition: background .3s;
+}
+.step-dot.done { background: var(--accent); }
+.step-dot.current { background: var(--accent2); }
+
+.question-block { animation: fadeUp .35s ease; }
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(16px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+.q-category {
+  font-size: .68rem; font-weight:700;
+  letter-spacing:.12em; text-transform:uppercase;
+  padding: .25rem .7rem;
+  border-radius:4px;
+  display:inline-block;
+  margin-bottom:1rem;
+}
+.cat-vida     { background:rgba(240,180,41,.15); color:var(--accent); }
+.cat-hist     { background:rgba(224,92,42,.15);  color:var(--accent2); }
+.cat-sit      { background:rgba(52,199,123,.15); color:var(--green); }
+.cat-val      { background:rgba(160,120,220,.15);color:#a890e0; }
+.cat-calc     { background:rgba(80,160,220,.15); color:#70b0e0; }
+
+.q-text {
+  font-size: 1.1rem;
+  font-weight: 500;
+  line-height: 1.5;
+  margin-bottom: 1.8rem;
+  color: var(--text);
+}
+
+/* Options */
+.options-list { display:flex; flex-direction:column; gap:.7rem; margin-bottom:1.4rem; }
+
+.option-btn {
+  display:flex; align-items:flex-start; gap:.9rem;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: .95rem 1.1rem;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  text-align:left;
+  font-family:'Sora',sans-serif;
+  color: var(--light);
+  font-size: .88rem;
+  line-height:1.45;
+}
+.option-btn:hover { border-color: var(--accent); background: var(--surface2); }
+.option-btn.selected {
+  border-color: var(--accent);
+  background: rgba(240,180,41,.08);
+  color: var(--text);
+}
+.option-btn.selected .opt-letter { background: var(--accent); color:#0f0f13; }
+.opt-letter {
+  width:26px; height:26px; border-radius:6px;
+  background:var(--surface2); border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  font-size:.72rem; font-weight:700; flex-shrink:0;
+  color: var(--muted);
+  transition: background .2s, color .2s;
+}
+
+/* Textarea */
+.open-textarea {
+  width:100%;
+  background:var(--surface);
+  border:1.5px solid var(--border);
+  border-radius:10px;
+  padding:1rem;
+  font-family:'Sora',sans-serif;
+  font-size:.9rem;
+  color:var(--text);
+  resize:vertical;
+  min-height:110px;
+  outline:none;
+  transition:border-color .2s;
+  margin-bottom:1.4rem;
+}
+.open-textarea:focus { border-color:var(--accent); }
+.open-textarea::placeholder { color:var(--muted); }
+
+/* Calc */
+.calc-wrap {
+  display:flex; gap:.7rem; align-items:center;
+  margin-bottom:1.4rem;
+  flex-wrap:wrap;
+}
+.calc-input {
+  background:var(--surface);
+  border:1.5px solid var(--border);
+  border-radius:8px;
+  padding:.7rem 1rem;
+  font-family:'Sora',sans-serif;
+  font-size:1.1rem;
+  color:var(--text);
+  width:130px;
+  outline:none;
+  transition:border-color .2s;
+}
+.calc-input:focus { border-color:var(--accent); }
+.calc-label { font-size:.85rem; color:var(--muted); }
+
+.nav-row {
+  display:flex; justify-content:space-between; align-items:center;
+  margin-top:.5rem;
+}
+
+/* ── RESULT ── */
+#screen-result {
+  padding: 2rem 1.2rem 4rem;
+  align-items:center;
+}
+.result-inner { max-width:640px; width:100%; }
+
+.result-header {
+  text-align:center;
+  padding: 2.5rem 1.5rem 2rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  margin-bottom: 1.5rem;
+  position:relative;
+  overflow:hidden;
+}
+.result-header::before {
+  content:'';
+  position:absolute; inset:0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(240,180,41,.1) 0%, transparent 65%);
+  pointer-events:none;
+}
+.verdict-badge {
+  display:inline-flex; align-items:center; gap:.5rem;
+  border-radius:50px;
+  padding:.5rem 1.4rem;
+  font-size:.8rem; font-weight:700;
+  letter-spacing:.06em; text-transform:uppercase;
+  margin-bottom:1.2rem;
+}
+.verdict-green  { background:rgba(52,199,123,.15); color:var(--green); border:1px solid rgba(52,199,123,.3); }
+.verdict-yellow { background:rgba(240,180,41,.15); color:var(--yellow); border:1px solid rgba(240,180,41,.3); }
+.verdict-red    { background:rgba(224,92,92,.15);  color:var(--red);    border:1px solid rgba(224,92,92,.3); }
+
+.result-name {
+  font-family:'Playfair Display',serif;
+  font-size:1.6rem;
+  margin-bottom:.4rem;
+}
+.result-name em { font-style:italic; color:var(--accent); }
+.result-sub { font-size:.85rem; color:var(--muted); }
+
+/* Score ring */
+.score-ring-wrap {
+  display:flex; justify-content:center;
+  margin: 1.5rem 0 1rem;
+}
+.score-ring {
+  width:110px; height:110px;
+  position:relative;
+}
+.score-ring svg { width:100%; height:100%; transform:rotate(-90deg); }
+.score-ring circle {
+  fill:none; stroke-width:8;
+  stroke-linecap:round;
+}
+.ring-bg   { stroke: var(--border); }
+.ring-fill { transition:stroke-dashoffset 1s ease; }
+.score-text {
+  position:absolute; inset:0;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+}
+.score-num {
+  font-size:1.6rem; font-weight:700;
+  line-height:1;
+}
+.score-label { font-size:.65rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+
+/* Indicators */
+.indicators-grid {
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:.8rem; margin-bottom:1.5rem;
+}
+@media(max-width:480px){ .indicators-grid { grid-template-columns:1fr; } }
+
+.ind-card {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:1rem 1.1rem;
+}
+.ind-card .ind-title {
+  font-size:.72rem; font-weight:600; text-transform:uppercase;
+  letter-spacing:.08em; color:var(--muted); margin-bottom:.5rem;
+}
+.ind-bar-wrap { display:flex; align-items:center; gap:.7rem; }
+.ind-bar-bg {
+  flex:1; height:6px; border-radius:3px;
+  background: var(--border);
+  overflow:hidden;
+}
+.ind-bar-fill {
+  height:100%; border-radius:3px;
+  transition: width 1.2s ease;
+}
+.ind-val { font-size:.8rem; font-weight:600; min-width:28px; text-align:right; }
+.bar-green  { background:var(--green); }
+.bar-yellow { background:var(--yellow); }
+.bar-red    { background:var(--red); }
+
+/* Flags */
+.flags-section {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:1.3rem 1.4rem;
+  margin-bottom:1.2rem;
+}
+.flags-section h3 {
+  font-size:.78rem; font-weight:700; text-transform:uppercase;
+  letter-spacing:.1em; color:var(--muted); margin-bottom:1rem;
+}
+.flag-item {
+  display:flex; gap:.8rem; align-items:flex-start;
+  padding:.6rem 0;
+  border-bottom:1px solid var(--border);
+  font-size:.85rem;
+}
+.flag-item:last-child { border-bottom:none; }
+.flag-icon { font-size:1rem; flex-shrink:0; }
+.flag-text strong { display:block; font-size:.82rem; color:var(--text); margin-bottom:.1rem; }
+.flag-text span { font-size:.78rem; color:var(--muted); }
+
+/* Recommendation */
+.recommendation {
+  border-radius:12px;
+  padding:1.3rem 1.4rem;
+  margin-bottom:1.5rem;
+}
+.rec-green  { background:rgba(52,199,123,.08);  border:1px solid rgba(52,199,123,.2); }
+.rec-yellow { background:rgba(240,180,41,.08);  border:1px solid rgba(240,180,41,.2); }
+.rec-red    { background:rgba(224,92,92,.08);   border:1px solid rgba(224,92,92,.2); }
+.recommendation h3 {
+  font-size:.85rem; font-weight:700; margin-bottom:.5rem;
+}
+.recommendation p { font-size:.83rem; color:var(--light); line-height:1.55; }
+
+.print-note {
+  text-align:center;
+  font-size:.76rem; color:var(--muted);
+  margin-bottom:1rem;
+}
+
+.btn-print {
+  display:flex; align-items:center; justify-content:center; gap:.6rem;
+  width:100%;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:50px;
+  padding:.75rem;
+  font-family:'Sora',sans-serif;
+  font-size:.85rem; color:var(--light);
+  cursor:pointer;
+  transition:border-color .2s;
+}
+.btn-print:hover { border-color:var(--accent); color:var(--accent); }
+
+/* ── PRINT ── */
+@media print {
+  #progress-bar, .btn-print, .print-note, #screen-intro, #screen-quiz { display:none !important; }
+  #screen-result { display:flex !important; background:#fff !important; color:#111 !important; }
+  .result-inner * { color:#111 !important; background:#fff !important; border-color:#ccc !important; }
+}
+</style>
+</head>
+<body>
+
+<div id="progress-bar"><div id="progress-fill"></div></div>
+
+<!-- ══ INTRO ══ -->
+<div id="screen-intro" class="screen active">
+  <div class="intro-card">
+    <div class="logo-badge">🧠 Avaliação Comportamental</div>
+    <h1>Você está a um passo de<br><em>fazer parte do time</em></h1>
+    <p>Este questionário nos ajuda a entender melhor o seu perfil. Não há respostas certas ou erradas — seja honesto(a).</p>
+    <div class="meta-list">
+      <span class="meta-item"><span class="dot"></span> ~8 minutos</span>
+      <span class="meta-item"><span class="dot"></span> 12 perguntas</span>
+      <span class="meta-item"><span class="dot"></span> Operador(a) de Caixa</span>
+    </div>
+    <div class="name-input-wrap">
+      <label>Seu nome completo</label>
+      <input type="text" id="candidate-name" placeholder="Ex: Maria Silva" autocomplete="name" />
+    </div>
+    <button class="btn-primary" id="btn-start" onclick="startQuiz()" disabled>
+      Iniciar avaliação →
+    </button>
+  </div>
+</div>
+
+<!-- ══ QUIZ ══ -->
+<div id="screen-quiz" class="screen">
+  <div class="quiz-inner">
+    <div class="step-indicator">
+      <span class="step-num" id="step-num">1 / 12</span>
+      <div class="step-dots" id="step-dots"></div>
+    </div>
+    <div id="question-area"></div>
+    <div class="nav-row">
+      <button class="btn-secondary" id="btn-back" onclick="prevQ()" style="visibility:hidden">← Voltar</button>
+      <button class="btn-primary" id="btn-next" onclick="nextQ()" style="max-width:160px" disabled>Próxima →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RESULT ══ -->
+<div id="screen-result" class="screen">
+  <div class="result-inner" id="result-content"></div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  DATA — QUESTIONS
+// ══════════════════════════════════════════
+const questions = [
+  {
+    id: 1,
+    category: "Contexto de Vida",
+    catClass: "cat-vida",
+    type: "options",
+    text: "Como você vai se deslocar até o trabalho todos os dias?",
+    options: [
+      { letter:"A", text:"Tenho transporte próprio ou me viro facilmente (ônibus, metrô bem definido).", score:3, flag:null },
+      { letter:"B", text:"Tenho uma opção, mas ainda preciso confirmar alguns detalhes.", score:2, flag:"logistica_incerta" },
+      { letter:"C", text:"Dependo de carona de alguém que ainda não confirmou.", score:0, flag:"logistica_risco" },
+      { letter:"D", text:"Ainda não sei bem como vou fazer.", score:0, flag:"logistica_risco" }
+    ],
+    dimension: "logistica"
+  },
+  {
+    id: 2,
+    category: "Contexto de Vida",
+    catClass: "cat-vida",
+    type: "options",
+    text: "Você tem alguma responsabilidade fixa — filho(a) para buscar, cuidar de alguém, curso — que possa conflitar com o horário da vaga?",
+    options: [
+      { letter:"A", text:"Não tenho nenhum conflito com o horário.", score:3, flag:null },
+      { letter:"B", text:"Tenho, mas já tenho uma solução organizada para isso.", score:2, flag:null },
+      { letter:"C", text:"Tenho e ainda estou resolvendo — acho que vai dar certo.", score:1, flag:"conciliacao_incerta" },
+      { letter:"D", text:"Tenho e realmente não sei como vou conciliar ainda.", score:0, flag:"conciliacao_risco" }
+    ],
+    dimension: "logistica"
+  },
+  {
+    id: 3,
+    category: "Histórico Profissional",
+    catClass: "cat-hist",
+    type: "options",
+    text: "Quanto tempo você ficou no seu último emprego?",
+    options: [
+      { letter:"A", text:"Mais de 1 ano.", score:3, flag:null },
+      { letter:"B", text:"Entre 6 meses e 1 ano.", score:2, flag:null },
+      { letter:"C", text:"Entre 2 e 6 meses.", score:1, flag:"historico_curto" },
+      { letter:"D", text:"Menos de 2 meses, ou é meu primeiro emprego.", score:0, flag:"historico_muito_curto" }
+    ],
+    dimension: "estabilidade"
+  },
+  {
+    id: 4,
+    category: "Histórico Profissional",
+    catClass: "cat-hist",
+    type: "options",
+    text: "Por que você saiu (ou quer sair) do seu último emprego?",
+    options: [
+      { letter:"A", text:"Motivo externo claro: empresa fechou, contrato encerrou, mudança de cidade.", score:3, flag:null },
+      { letter:"B", text:"Busca de crescimento ou oportunidade melhor.", score:2, flag:null },
+      { letter:"C", text:"Problemas com o ambiente, colegas ou liderança.", score:1, flag:"conflito_relacional" },
+      { letter:"D", text:"Não me adaptei ao ritmo ou às regras do trabalho.", score:0, flag:"adaptacao_risco" }
+    ],
+    dimension: "estabilidade"
+  },
+  {
+    id: 5,
+    category: "Situação Prática",
+    catClass: "cat-sit",
+    type: "options",
+    text: "Você está no caixa com fila grande quando o sistema trava. O que você faz primeiro?",
+    options: [
+      { letter:"A", text:"Comunico os clientes com calma e aciono o suporte imediatamente.", score:3, flag:null },
+      { letter:"B", text:"Espero um pouco para ver se volta sozinho e depois peço ajuda.", score:2, flag:null },
+      { letter:"C", text:"Fico sem saber o que fazer e espero alguém me orientar.", score:1, flag:"reatividade_baixa" },
+      { letter:"D", text:"Fico nervoso(a) e acabo transmitindo a tensão para os clientes.", score:0, flag:"regulacao_risco" }
+    ],
+    dimension: "regulacao"
+  },
+  {
+    id: 6,
+    category: "Situação Prática",
+    catClass: "cat-sit",
+    type: "options",
+    text: "Um cliente começa a falar alto no caixa, irritado com o tempo de espera. Como você reage?",
+    options: [
+      { letter:"A", text:"Mantenho a calma, reconheço a frustração dele e ofereço uma solução.", score:3, flag:null },
+      { letter:"B", text:"Fico um pouco tenso(a), mas consigo me manter educado(a) e buscar ajuda.", score:2, flag:null },
+      { letter:"C", text:"Fico em silêncio e espero ele se acalmar, sem saber bem o que dizer.", score:1, flag:"postura_passiva" },
+      { letter:"D", text:"Sinto vontade de responder no mesmo tom ou me justificar.", score:0, flag:"reatividade_emocional" }
+    ],
+    dimension: "regulacao"
+  },
+  {
+    id: 7,
+    category: "Situação Prática",
+    catClass: "cat-sit",
+    type: "options",
+    text: "Você percebe que deu troco errado para um cliente que já saiu da loja. O que você faz?",
+    options: [
+      { letter:"A", text:"Aviso o supervisor imediatamente, mesmo sabendo que posso ser questionado(a).", score:3, flag:null },
+      { letter:"B", text:"Registro internamente e aviso assim que puder, sem esconder.", score:2, flag:null },
+      { letter:"C", text:"Fico preocupado(a) mas espero para ver se alguém percebe antes.", score:1, flag:"integridade_passiva" },
+      { letter:"D", text:"Prefiro não mencionar para não arrumar confusão.", score:0, flag:"integridade_risco" }
+    ],
+    dimension: "integridade"
+  },
+  {
+    id: 8,
+    category: "Valores",
+    catClass: "cat-val",
+    type: "options",
+    text: "Como você se sente em relação a receber um feedback ou correção do supervisor nos primeiros dias?",
+    options: [
+      { letter:"A", text:"Vejo como parte do aprendizado — é assim que a gente cresce.", score:3, flag:null },
+      { letter:"B", text:"Depende de como é falado, mas aceito bem quando é com respeito.", score:2, flag:null },
+      { letter:"C", text:"Fico um pouco na defensiva, mas com o tempo melhoro.", score:1, flag:"abertura_feedback" },
+      { letter:"D", text:"Não gosto muito — prefiro que confiem em mim logo de início.", score:0, flag:"resistencia_feedback" }
+    ],
+    dimension: "aprendizado"
+  },
+  {
+    id: 9,
+    category: "Valores",
+    catClass: "cat-val",
+    type: "options",
+    text: "O que você imagina que vai ser mais difícil nesse trabalho para você?",
+    options: [
+      { letter:"A", text:"Algo pontual como decorar os códigos ou me acostumar com o sistema.", score:3, flag:null },
+      { letter:"B", text:"O ritmo nos horários de pico — mas estou disposto(a) a me adaptar.", score:2, flag:null },
+      { letter:"C", text:"Lidar com clientes difíceis — sei que pode ser desgastante.", score:1, flag:"core_dificuldade" },
+      { letter:"D", text:"O horário ou a rotina — não tenho muita experiência com isso.", score:0, flag:"fit_risco" }
+    ],
+    dimension: "fit"
+  },
+  {
+    id: 10,
+    category: "Valores",
+    catClass: "cat-val",
+    type: "options",
+    text: "Onde você quer estar profissionalmente daqui a um ano?",
+    options: [
+      { letter:"A", text:"Crescendo dentro dessa empresa ou área — quero construir algo aqui.", score:3, flag:null },
+      { letter:"B", text:"Estável, aprendendo, e talvez buscando uma promoção.", score:2, flag:null },
+      { letter:"C", text:"Provavelmente já em outra área diferente do varejo.", score:1, flag:"fit_plano" },
+      { letter:"D", text:"Ainda não tenho um plano claro.", score:0, flag:"sem_perspectiva" }
+    ],
+    dimension: "fit"
+  },
+  {
+    id: 11,
+    category: "Cálculo Rápido",
+    catClass: "cat-calc",
+    type: "calc",
+    text: "Cálculo de troco — um cliente comprou R$ 43,50 e pagou com R$ 50,00. Qual é o troco correto?",
+    correctAnswer: 6.5,
+    dimension: "atencao"
+  },
+  {
+    id: 12,
+    category: "Reflexão Aberta",
+    catClass: "cat-val",
+    type: "open",
+    text: "Se seu último supervisor(a) descrevesse um ponto de melhoria seu, o que você acha que ele(a) diria? (Responda com honestidade — não há resposta errada.)",
+    dimension: "autoconsciencia",
+    minLength: 30
+  }
+];
+
+// ══════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════
+let current = 0;
+let answers = Array(questions.length).fill(null);
+let candidateName = "";
+
+// ══════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════
+document.getElementById('candidate-name').addEventListener('input', function(){
+  const v = this.value.trim();
+  candidateName = v;
+  document.getElementById('btn-start').disabled = v.length < 2;
+});
+
+function startQuiz(){
+  candidateName = document.getElementById('candidate-name').value.trim();
+  showScreen('screen-quiz');
+  buildDots();
+  renderQ(0);
+}
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function buildDots(){
+  const c = document.getElementById('step-dots');
+  c.innerHTML = '';
+  questions.forEach((_,i) => {
+    const d = document.createElement('div');
+    d.className = 'step-dot' + (i===0?' current':'');
+    d.id = `dot-${i}`;
+    c.appendChild(d);
+  });
+}
+
+// ══════════════════════════════════════════
+//  RENDER QUESTION
+// ══════════════════════════════════════════
+function renderQ(idx){
+  const q = questions[idx];
+  const area = document.getElementById('question-area');
+  updateProgress(idx);
+
+  let html = `<div class="question-block">
+    <span class="q-category ${q.catClass}">${q.category}</span>
+    <p class="q-text">${q.text}</p>`;
+
+  if(q.type === 'options'){
+    html += `<div class="options-list">`;
+    q.options.forEach((opt,oi) => {
+      const sel = answers[idx] === oi ? ' selected' : '';
+      html += `<button class="option-btn${sel}" onclick="selectOption(${idx},${oi})">
+        <span class="opt-letter">${opt.letter}</span>
+        <span>${opt.text}</span>
+      </button>`;
+    });
+    html += `</div>`;
+  } else if(q.type === 'calc'){
+    const val = answers[idx] !== null ? answers[idx] : '';
+    html += `<div class="calc-wrap">
+      <span class="calc-label">Troco: R$</span>
+      <input class="calc-input" type="number" id="calc-input" placeholder="0,00" step="0.01" value="${val}"
+        oninput="handleCalc(${idx})" />
+    </div>`;
+  } else if(q.type === 'open'){
+    const val = answers[idx] !== null ? answers[idx] : '';
+    html += `<textarea class="open-textarea" id="open-input"
+      placeholder="Escreva aqui com suas próprias palavras..."
+      oninput="handleOpen(${idx})">${val}</textarea>`;
+  }
+
+  html += `</div>`;
+  area.innerHTML = html;
+
+  // back btn
+  document.getElementById('btn-back').style.visibility = idx > 0 ? 'visible' : 'hidden';
+
+  // next btn state
+  refreshNextBtn(idx);
+
+  // last question
+  document.getElementById('btn-next').textContent = idx === questions.length-1 ? 'Ver resultado ✓' : 'Próxima →';
+}
+
+function updateProgress(idx){
+  const pct = ((idx) / questions.length) * 100;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('step-num').textContent = `${idx+1} / ${questions.length}`;
+
+  document.querySelectorAll('.step-dot').forEach((d,i) => {
+    d.className = 'step-dot' + (i < idx ? ' done' : (i===idx ? ' current' : ''));
+  });
+}
+
+function refreshNextBtn(idx){
+  const q = questions[idx];
+  let enabled = false;
+  if(q.type==='options') enabled = answers[idx] !== null;
+  else if(q.type==='calc') enabled = answers[idx] !== null && answers[idx] !== '';
+  else if(q.type==='open') enabled = answers[idx] && answers[idx].trim().length >= (q.minLength||10);
+  document.getElementById('btn-next').disabled = !enabled;
+}
+
+// ══════════════════════════════════════════
+//  INTERACTIONS
+// ══════════════════════════════════════════
+function selectOption(qIdx, optIdx){
+  answers[qIdx] = optIdx;
+  document.querySelectorAll('.option-btn').forEach((b,i) => {
+    b.classList.toggle('selected', i===optIdx);
+  });
+  document.getElementById('btn-next').disabled = false;
+}
+
+function handleCalc(qIdx){
+  const v = parseFloat(document.getElementById('calc-input').value);
+  answers[qIdx] = isNaN(v) ? null : v;
+  refreshNextBtn(qIdx);
+}
+
+function handleOpen(qIdx){
+  const v = document.getElementById('open-input').value;
+  answers[qIdx] = v;
+  refreshNextBtn(qIdx);
+}
+
+function nextQ(){
+  if(current < questions.length-1){
+    current++;
+    renderQ(current);
+    window.scrollTo(0,0);
+  } else {
+    showResult();
+  }
+}
+
+function prevQ(){
+  if(current > 0){ current--; renderQ(current); window.scrollTo(0,0); }
+}
+
+// ══════════════════════════════════════════
+//  SCORING
+// ══════════════════════════════════════════
+function calcScore(){
+  let total = 0;
+  let max = 0;
+  let flags = [];
+  const dims = { logistica:0, estabilidade:0, regulacao:0, integridade:0, aprendizado:0, fit:0, atencao:0, autoconsciencia:0 };
+  const dimMax = { logistica:6, estabilidade:6, regulacao:6, integridade:3, aprendizado:3, fit:6, atencao:3, autoconsciencia:3 };
+
+  questions.forEach((q, i) => {
+    const ans = answers[i];
+    if(q.type==='options' && ans !== null){
+      const opt = q.options[ans];
+      total += opt.score;
+      max += 3;
+      dims[q.dimension] = (dims[q.dimension]||0) + opt.score;
+      if(opt.flag) flags.push({ flag: opt.flag, q: q.id });
+    } else if(q.type==='calc'){
+      const correct = Math.abs((ans||0) - q.correctAnswer) < 0.01;
+      const pts = correct ? 3 : (Math.abs((ans||0) - q.correctAnswer) < 1 ? 1 : 0);
+      total += pts; max += 3;
+      dims[q.dimension] = (dims[q.dimension]||0) + pts;
+      if(!correct) flags.push({ flag:'calculo_erro', q: q.id });
+    } else if(q.type==='open'){
+      // open answers: check length as proxy for reflection depth
+      const len = (ans||'').trim().length;
+      const pts = len > 100 ? 3 : len > 50 ? 2 : len > 20 ? 1 : 0;
+      total += pts; max += 3;
+      dims[q.dimension] = (dims[q.dimension]||0) + pts;
+    }
+  });
+
+  const pct = Math.round((total / max) * 100);
+  return { total, max, pct, flags, dims, dimMax };
+}
+
+const flagMeta = {
+  logistica_risco:      { icon:'🚌', label:'Logística em risco', desc:'Transporte ou deslocamento sem solução definida.' },
+  logistica_incerta:    { icon:'⚠️', label:'Logística incerta',  desc:'Confirmar antes da admissão.' },
+  conciliacao_risco:    { icon:'👶', label:'Conflito de horário', desc:'Responsabilidades que podem impactar presença.' },
+  conciliacao_incerta:  { icon:'📅', label:'Conciliação a resolver', desc:'Verificar se a solução será viável.' },
+  historico_curto:      { icon:'📋', label:'Histórico curto',    desc:'Empregos anteriores de curta duração — aprofundar motivos.' },
+  historico_muito_curto:{ icon:'🔁', label:'Padrão de saída rápida', desc:'Verificar se há padrão de desligamentos precoces.' },
+  conflito_relacional:  { icon:'🤝', label:'Saída por conflito', desc:'Investigar contexto — pode indicar dificuldade com hierarquia.' },
+  adaptacao_risco:      { icon:'🔄', label:'Dificuldade de adaptação', desc:'Não se adaptou ao ritmo ou regras do emprego anterior.' },
+  reatividade_emocional:{ icon:'😤', label:'Alta reatividade emocional', desc:'Tende a reagir sob pressão — monitorar nos primeiros dias.' },
+  regulacao_risco:      { icon:'😰', label:'Dificuldade sob pressão', desc:'Indica possível impacto na experiência do cliente em momentos críticos.' },
+  postura_passiva:      { icon:'🤐', label:'Postura passiva em conflito', desc:'Pode gerar insatisfação do cliente por omissão.' },
+  reatividade_baixa:    { icon:'⏳', label:'Baixa proatividade', desc:'Espera instruções ao invés de agir — precisa de acompanhamento.' },
+  integridade_risco:    { icon:'🔒', label:'Atenção à integridade', desc:'Tendência a evitar reporte de erros — ponto crítico para a função.' },
+  integridade_passiva:  { icon:'🔔', label:'Integridade passiva', desc:'Não esconde, mas hesita em reportar — orientar no onboarding.' },
+  resistencia_feedback: { icon:'💬', label:'Resistência a feedback', desc:'Pode dificultar o aprendizado no período de experiência.' },
+  abertura_feedback:    { icon:'💬', label:'Abertura moderada a feedback', desc:'Atenção ao estilo do supervisor para não gerar resistência.' },
+  core_dificuldade:     { icon:'🧩', label:'Dificuldade no core da função', desc:'Lidar com clientes é o centro do trabalho — avaliar com cuidado.' },
+  fit_risco:            { icon:'🎯', label:'Fit com a função em dúvida', desc:'Horário/rotina como dificuldade central — verificar expectativas.' },
+  fit_plano:            { icon:'🗺️', label:'Plano divergente da área', desc:'Não se vê no varejo a médio prazo — tendência de saída.' },
+  sem_perspectiva:      { icon:'🌫️', label:'Sem perspectiva clara', desc:'Ausência de projeto profissional pode levar à saída quando surgir outra opção.' },
+  calculo_erro:         { icon:'🧮', label:'Erro no cálculo de troco', desc:'Verificar atenção numérica — pode precisar de reforço no início.' },
+};
+
+const dimLabel = {
+  logistica:'Logística', estabilidade:'Estabilidade', regulacao:'Regulação emocional',
+  integridade:'Integridade', aprendizado:'Abertura p/ aprender', fit:'Fit com a função',
+  atencao:'Atenção numérica', autoconsciencia:'Autoconsciência'
+};
+
+// ══════════════════════════════════════════
+//  SHOW RESULT
+// ══════════════════════════════════════════
+function showResult(){
+  const { pct, flags, dims, dimMax } = calcScore();
+  updateProgress(questions.length);
+  document.getElementById('progress-fill').style.width = '100%';
+
+  let verdict, verdictClass, recClass, recTitle, recText;
+  const riskFlags = flags.filter(f => ['logistica_risco','reatividade_emocional','regulacao_risco','integridade_risco','adaptacao_risco','historico_muito_curto','fit_risco'].includes(f.flag));
+
+  if(pct >= 72 && riskFlags.length === 0){
+    verdict = '✓ Perfil recomendado'; verdictClass = 'verdict-green'; recClass='rec-green';
+    recTitle = '🟢 Recomendado para avançar';
+    recText = `${candidateName} demonstrou boa estabilidade, regulação emocional e fit com a função. Sinalizadores comportamentais de risco não foram identificados. Avance para entrevista presencial ou etapa de admissão.`;
+  } else if(pct >= 50 && riskFlags.length <= 1){
+    verdict = '⚡ Avançar com atenção'; verdictClass = 'verdict-yellow'; recClass='rec-yellow';
+    recTitle = '🟡 Avançar com plano de acompanhamento';
+    recText = `${candidateName} apresenta pontos positivos mas tem ${flags.length > 0 ? flags.length + ' sinalizador(es) de atenção' : 'algumas incertezas'}. Recomendado avançar com acompanhamento próximo nos primeiros 30 dias e alinhamento claro de expectativas na admissão.`;
+  } else {
+    verdict = '⚑ Requer análise aprofundada'; verdictClass = 'verdict-red'; recClass='rec-red';
+    recTitle = '🔴 Requer entrevista aprofundada antes de avançar';
+    recText = `Foram identificados ${flags.length} sinalizadores que podem indicar risco de saída precoce. Recomendado uma entrevista presencial focada nos pontos críticos antes de qualquer decisão de avanço.`;
+  }
+
+  // ring color
+  const ringColor = pct>=72 ? '#34c77b' : pct>=50 ? '#f0b429' : '#e05c5c';
+  const circumference = 2 * Math.PI * 44; // r=44
+  const offset = circumference - (pct/100)*circumference;
+
+  // dimensions bars
+  const dimOrder = ['regulacao','integridade','estabilidade','logistica','fit','aprendizado','atencao','autoconsciencia'];
+  let dimsHTML = '';
+  dimOrder.forEach(d => {
+    const v = dims[d]||0;
+    const m = dimMax[d]||3;
+    const p = Math.round((v/m)*100);
+    const barClass = p>=70?'bar-green':p>=40?'bar-yellow':'bar-red';
+    const valColor = p>=70?'var(--green)':p>=40?'var(--yellow)':'var(--red)';
+    dimsHTML += `<div class="ind-card">
+      <div class="ind-title">${dimLabel[d]}</div>
+      <div class="ind-bar-wrap">
+        <div class="ind-bar-bg"><div class="ind-bar-fill ${barClass}" style="width:0%" data-w="${p}"></div></div>
+        <span class="ind-val" style="color:${valColor}">${p}%</span>
+      </div>
+    </div>`;
+  });
+
+  // flags
+  let flagsHTML = '';
+  if(flags.length === 0){
+    flagsHTML = `<div class="flag-item"><span class="flag-icon">✅</span><div class="flag-text"><strong>Nenhum sinalizador de risco identificado</strong><span>Todas as respostas dentro do perfil esperado.</span></div></div>`;
+  } else {
+    flags.forEach(f => {
+      const m = flagMeta[f.flag];
+      if(!m) return;
+      flagsHTML += `<div class="flag-item">
+        <span class="flag-icon">${m.icon}</span>
+        <div class="flag-text">
+          <strong>${m.label}</strong>
+          <span>${m.desc}</span>
+        </div>
+      </div>`;
+    });
+  }
+
+  // date
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+
+  document.getElementById('result-content').innerHTML = `
+    <div class="result-header">
+      <span class="verdict-badge ${verdictClass}">${verdict}</span>
+      <div class="result-name">Resultado de <em>${candidateName}</em></div>
+      <div class="result-sub">Avaliação Comportamental — Operador(a) de Caixa &nbsp;·&nbsp; ${dateStr}</div>
+      <div class="score-ring-wrap">
+        <div class="score-ring">
+          <svg viewBox="0 0 100 100">
+            <circle class="ring-bg" cx="50" cy="50" r="44" stroke-dasharray="${circumference}" stroke-dashoffset="0"/>
+            <circle class="ring-fill" cx="50" cy="50" r="44"
+              stroke="${ringColor}"
+              stroke-dasharray="${circumference}"
+              stroke-dashoffset="${circumference}"
+              id="ring-anim"/>
+          </svg>
+          <div class="score-text">
+            <span class="score-num" style="color:${ringColor}">${pct}%</span>
+            <span class="score-label">fit geral</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="indicators-grid">${dimsHTML}</div>
+
+    <div class="flags-section">
+      <h3>⚑ Sinalizadores comportamentais (${flags.length})</h3>
+      ${flagsHTML}
+    </div>
+
+    <div class="recommendation ${recClass}">
+      <h3>${recTitle}</h3>
+      <p>${recText}</p>
+    </div>
+
+    <p class="print-note">Este resultado é para uso interno do RH — não compartilhe com o candidato.</p>
+    <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar como PDF</button>
+  `;
+
+  showScreen('screen-result');
+
+  // animate ring
+  requestAnimationFrame(()=>{
+    setTimeout(()=>{
+      const ring = document.getElementById('ring-anim');
+      if(ring) ring.style.strokeDashoffset = offset;
+      document.querySelectorAll('.ind-bar-fill').forEach(b => {
+        b.style.width = b.dataset.w + '%';
+      });
+    }, 200);
+  });
+}
+</script>
+</body>
+</html>
