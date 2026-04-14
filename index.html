@@ -1011,6 +1011,33 @@ function showResult(){
 
   showScreen('screen-result');
 
+  // --- persist submission for admin review (stored in localStorage)
+  try {
+    const submission = {
+      id: Date.now(),
+      name: candidateName || 'Sem nome',
+      date: now.toISOString(),
+      pct,
+      flags,
+      dims,
+      dimMax,
+      html: document.getElementById('result-content').innerHTML
+    };
+    const existing = JSON.parse(localStorage.getItem('submissions') || '[]');
+    existing.push(submission);
+    localStorage.setItem('submissions', JSON.stringify(existing));
+    // also send to server API if available
+    try {
+      fetch('/api/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(submission)
+      }).then(r=>{
+        if(!r.ok) console.warn('Envio ao servidor falhou:', r.status);
+      }).catch(e=>console.warn('Erro ao enviar submissão:', e));
+    } catch(e) { console.warn('Fetch não disponível:', e); }
+  } catch (e) { console.error('Falha ao salvar submissão:', e); }
+
   // animate ring
   requestAnimationFrame(()=>{
     setTimeout(()=>{
