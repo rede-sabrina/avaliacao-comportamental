@@ -8,12 +8,14 @@
     "start": "next start -p 4000"
   },
   "dependencies": {
+    "@sparticuz/chromium": "^123.0.1",
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.2",
     "jsonwebtoken": "9.0.0",
     "mongodb": "5.9.0",
     "next": "14.0.0",
     "puppeteer": "21.3.8",
+    "puppeteer-core": "21.3.8",
     "react": "18.2.0",
     "react-dom": "18.2.0"
   }

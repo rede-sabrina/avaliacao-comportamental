@@ -1,8 +1,26 @@
 import { clientPromise } from '../../../lib/mongodb';
-import puppeteer from 'puppeteer';
 import fs from 'fs';
 import path from 'path';
 import { requireAdmin } from '../../../lib/auth';
+
+async function launchPdfBrowser(){
+  const isVercel = !!process.env.VERCEL;
+
+  if(isVercel){
+    const chromium = (await import('@sparticuz/chromium')).default;
+    const puppeteerCore = (await import('puppeteer-core')).default;
+
+    return puppeteerCore.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+    });
+  }
+
+  const puppeteer = (await import('puppeteer')).default;
+  return puppeteer.launch({ args: ['--no-sandbox','--disable-setuid-sandbox'], headless: true });
+}
 
 export default async function handler(req,res){
   if(req.method!=='POST') return res.status(405).end();
@@ -28,7 +46,7 @@ export default async function handler(req,res){
     const bodyHtml = doc.html || (`<div><h1>Resultado de ${doc.name || ''}</h1><p>Score: ${doc.pct}%</p></div>`);
     const fullHtml = `<!doctype html><html><head><meta charset="utf-8">${fonts}<style>${css}</style></head><body>${bodyHtml}</body></html>`;
 
-    const browser = await puppeteer.launch({ args: ['--no-sandbox','--disable-setuid-sandbox'], headless: true });
+    const browser = await launchPdfBrowser();
     const page = await browser.newPage();
     await page.setContent(fullHtml, { waitUntil: 'networkidle0' });
     const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true });
