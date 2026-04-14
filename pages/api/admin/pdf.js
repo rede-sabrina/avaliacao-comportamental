@@ -3,10 +3,19 @@ import fs from 'fs';
 import path from 'path';
 import { requireAdmin } from '../../../lib/auth';
 
+function prepareChromiumEnvForVercel(){
+  if(!process.env.VERCEL) return;
+  if(process.env.AWS_EXECUTION_ENV || process.env.AWS_LAMBDA_JS_RUNTIME) return;
+
+  const major = Number(process.versions.node.split('.')[0] || '20');
+  process.env.AWS_EXECUTION_ENV = major >= 20 ? 'AWS_Lambda_nodejs20.x' : 'AWS_Lambda_nodejs18.x';
+}
+
 async function launchPdfBrowser(){
   const isVercel = !!process.env.VERCEL;
 
   if(isVercel){
+    prepareChromiumEnvForVercel();
     const chromium = (await import('@sparticuz/chromium')).default;
     const puppeteerCore = (await import('puppeteer-core')).default;
 
