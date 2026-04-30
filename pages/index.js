@@ -8,19 +8,22 @@ export default function Home(){
   const [candidateName, setCandidateName] = useState('');
   const [started, setStarted] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [selectedTest, setSelectedTest] = useState(null);
+  const [showTestSelection, setShowTestSelection] = useState(true);
   
 
   useEffect(()=>{ const savedName = localStorage.getItem('candidate_name') || ''; setCandidateName(savedName); },[]);
 
   // fetch questions from backend
   useEffect(()=>{
+    if(!selectedTest) return; // Só carrega perguntas se teste foi selecionado
     let mounted = true;
     async function load(){
-  try{
-    const r = await fetch('/api/questions');
-    if(!r.ok) throw new Error('failed');
-    const data = await r.json();
-    if(!mounted) return;
+      try{
+        const r = await fetch(`/api/questions?test=${selectedTest}`);
+        if(!r.ok) throw new Error('failed');
+        const data = await r.json();
+        if(!mounted) return;
 
     const categoryOrder = [
       'Logística',
@@ -58,7 +61,7 @@ export default function Home(){
 }
     load();
     return ()=>{ mounted = false; };
-  },[]);
+  },[selectedTest]);
 
   useEffect(()=>{ localStorage.setItem('candidate_name', candidateName); },[candidateName]);
 
@@ -150,7 +153,7 @@ export default function Home(){
     const dateStr = now.toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
     const reportHtml = buildReportHtml({ candidateName: candidateName||'Sem nome', pct, flags, dims, dimMax, dateStr, openAnswers });
 
-    const submission = { id: Date.now(), name: candidateName || 'Sem nome', date: now.toISOString(), pct, flags, dims, dimMax, html: reportHtml };
+    const submission = { id: Date.now(), name: candidateName || 'Sem nome', date: now.toISOString(), pct, flags, dims, dimMax, html: reportHtml, test_type: selectedTest || 'antigo' };
     // save local
     try{ const existing = JSON.parse(localStorage.getItem('submissions')||'[]'); existing.push(submission); localStorage.setItem('submissions', JSON.stringify(existing)); }catch(e){ console.error(e); }
     // send server
@@ -161,78 +164,119 @@ export default function Home(){
   }
 
   function buildReportHtml({ candidateName, pct, flags, dims, dimMax, dateStr, openAnswers }){
-    const flagMeta = {
-      logistica_risco:      { icon:'🚌', label:'Logística em risco', desc:'Transporte ou deslocamento sem solução definida.' },
-      logistica_incerta:    { icon:'⚠️', label:'Logística incerta',  desc:'Confirmar antes da admissão.' },
-      conciliacao_risco:    { icon:'👶', label:'Conflito de horário', desc:'Responsabilidades que podem impactar presença.' },
-      conciliacao_incerta:  { icon:'📅', label:'Conciliação a resolver', desc:'Verificar se a solução será viável.' },
-      historico_curto:      { icon:'📋', label:'Histórico curto',    desc:'Empregos anteriores de curta duração — aprofundar motivos.' },
-      historico_muito_curto:{ icon:'🔁', label:'Padrão de saída rápida', desc:'Verificar se há padrão de desligamentos precoces.' },
-      conflito_relacional:  { icon:'🤝', label:'Saída por conflito', desc:'Investigar contexto — pode indicar dificuldade com hierarquia.' },
-      adaptacao_risco:      { icon:'🔄', label:'Dificuldade de adaptação', desc:'Não se adaptou ao ritmo ou regras do emprego anterior.' },
-      reatividade_emocional:{ icon:'😤', label:'Alta reatividade emocional', desc:'Tende a reagir sob pressão — monitorar nos primeiros dias.' },
-      regulacao_risco:      { icon:'😰', label:'Dificuldade sob pressão', desc:'Indica possível impacto na experiência do cliente em momentos críticos.' },
-      postura_passiva:      { icon:'🤐', label:'Postura passiva em conflito', desc:'Pode gerar insatisfação do cliente por omissão.' },
-      reatividade_baixa:    { icon:'⏳', label:'Baixa proatividade', desc:'Espera instruções ao invés de agir — precisa de acompanhamento.' },
-      integridade_risco:    { icon:'🔒', label:'Atenção à integridade', desc:'Tendência a evitar reporte de erros — ponto crítico para a função.' },
-      integridade_passiva:  { icon:'🔔', label:'Integridade passiva', desc:'Não esconde, mas hesita em reportar — orientar no onboarding.' },
-      resistencia_feedback: { icon:'💬', label:'Resistência a feedback', desc:'Pode dificultar o aprendizado no período de experiência.' },
-      abertura_feedback:    { icon:'💬', label:'Abertura moderada a feedback', desc:'Atenção ao estilo do supervisor para não gerar resistência.' },
-      core_dificuldade:     { icon:'🧩', label:'Dificuldade no core da função', desc:'Lidar com clientes é o centro do trabalho — avaliar com cuidado.' },
-      fit_risco:            { icon:'🎯', label:'Fit com a função em dúvida', desc:'Horário/rotina como dificuldade central — verificar expectativas.' },
-      fit_plano:            { icon:'🗺️', label:'Plano divergente da área', desc:'Não se vê no varejo a médio prazo — tendência de saída.' },
-      sem_perspectiva:      { icon:'🌫️', label:'Sem perspectiva clara', desc:'Ausência de projeto profissional pode levar à saída quando surgir outra opção.' },
-      calculo_erro:         { icon:'🧮', label:'Erro no cálculo de troco', desc:'Verificar atenção numérica — pode precisar de reforço no início.' },
+    const DIM_MAX = dimMax || {};
+    const dimsList = Object.keys(DIM_MAX).length ? Object.keys(DIM_MAX) : Object.keys(dims || {});
+
+    // dimension descriptions for both tests
+    const dimDescriptions = {
+      'Comunicação': { high: 'Excelente comunicação: informa proativamente problemas e passagens de turno, garantindo continuidade operacional.', mid: 'Boa comunicação na maior parte do tempo, mas pode falhar em situações de pressão; reforçar instruções claras no onboarding.', low: 'Indicadores sugerem tendência a não comunicar ativamente problemas e passagens de turno. Em operações com vários turnos, a comunicação é essencial.' },
+      'Priorização': { high: 'Excelente capacidade de priorização, sendo capaz de identificar rapidamente as tarefas mais críticas e focar recursos onde terão maior impacto.', mid: 'Demonstra habilidade de priorizar tarefas, mas pode perder foco sob carga intensa; orientar em técnicas simples de priorização.', low: 'Dificuldade em priorizar tarefas; tende a tratar tudo como urgente. Recomendado acompanhar na integração.' },
+      'Gestão de Conflitos': { high: 'Alta capacidade de mediação e manutenção da calma em situações tensas.', mid: 'Boa capacidade de lidar com clientes e colegas em tensão, mas pode se beneficiar de desenvolvimento em técnicas de mediação.', low: 'Tende a escalar conflitos ou evitar confronto — atenção em funções com atendimento ao cliente.' },
+      'Qualidade': { high: 'Mantém alto padrão de qualidade mesmo sob pressão.', mid: 'Boa atenção à qualidade, mas pode oscilar quando o ritmo aumenta; reforçar procedimentos.', low: 'Dificuldade em manter padrões de qualidade; requer supervisão e treinamento prático.' },
+      'Colaboração': { high: 'Colabora proativamente com a equipe e facilita o trabalho conjunto.', mid: 'Colabora quando solicitado, pode precisar de estímulo para iniciativa colaborativa.', low: 'Tende a trabalhar isoladamente e não busca colaboração; importante avaliar fit com equipes baseadas em cooperação.' },
+      'Adaptabilidade': { high: 'Adapta-se rapidamente a mudanças e novos procedimentos.', mid: 'Adapta-se com alguma resistência inicial, mas tende a ajustar-se com tempo.', low: 'Resistência a mudanças e dificuldades para seguir novos processos; atenção em ambientes dinâmicos.' },
+      'Responsabilidade': { high: 'Demonstra forte senso de responsabilidade: comunica imprevistos e assume pendências.', mid: 'Cumpre responsabilidades na maior parte do tempo, mas pode hesitar em se expor em casos de erro.', low: 'Indicadores sugerem tendência a não assumir responsabilidades; ponto crítico para funções com autonomia.' },
+      'Honestidade': { high: 'Demonstra boa capacidade de honestidade e transparência, comunicando erros e inconsistências com proatividade.', mid: 'Demonstra honestidade na maioria das situações, mas pode hesitar em se expor quando há risco pessoal.', low: 'Tendência a omitir informações quando isso oferece vantagem; atenção em funções com manuseio de recursos.' },
+      'Confiabilidade': { high: 'Perfil confiável, cumpre compromissos mesmo quando é inconveniente.', mid: 'Confiável na maioria das situações, mas pode ter dificuldade com imprevistos pessoais.', low: 'Dificuldade em manter compromissos; atenção em funções que exigem presença e ritmo.' },
+      'Conformidade': { high: 'Segue normas e procedimentos mesmo quando discorda, buscando canais adequados para expor opiniões.', mid: 'Segue regras na maior parte do tempo, mas pode flexibilizar quando não há supervisão.', low: 'Tende a contornar regras que considera desnecessárias; risco para procedimentos sensíveis.' },
+      'Risco Ético': { high: 'Indicadores sugerem risco ético elevado. Respostas apontam para relativização de limites com recursos da empresa ou de clientes.', mid: 'Alguma flexibilidade ética em situações de pressão; aprofundar em entrevistas.', low: 'Postura ética consistente diante de situações de pressão; sem indicadores de risco.' }
     };
 
-    const dimLabel = { logistica:'Logística', estabilidade:'Estabilidade', regulacao:'Regulação emocional', integridade:'Integridade', aprendizado:'Abertura p/ aprender', fit:'Fit com a função', atencao:'Atenção numérica', autoconsciencia:'Autoconsciência' };
+    // flags meta (more complete)
+    const flagMeta = {
+      integridade_passiva: { icon:'⚠️', label:'Integridade passiva', desc:'Não esconde, mas hesita em reportar — orientar no onboarding.' },
+      integridade_risco: { icon:'🔒', label:'Atenção à integridade', desc:'Tendência a evitar reporte de erros — ponto crítico para a função.' },
+      adaptacao_risco: { icon:'⚠️', label:'Dificuldade de adaptação', desc:'Não se adaptou ao ritmo ou regras do emprego anterior.' },
+      historico_muito_curto: { icon:'⚠️', label:'Padrão de saída rápida', desc:'Verificar motivos de desligamentos precoces.' },
+      postura_passiva: { icon:'⚠️', label:'Postura passiva em conflito', desc:'Pode gerar omissão em situações de cliente/turno.' },
+      reatividade_baixa: { icon:'⚠️', label:'Baixa proatividade', desc:'Espera instruções ao invés de agir — precisa de acompanhamento.' },
+      calculo_erro: { icon:'🧮', label:'Erro no cálculo', desc:'Verificar atenção numérica — pode precisar de reforço.' }
+    };
 
-    let verdict = '⚑ Requer análise aprofundada', verdictClass='verdict-red', recClass='rec-red', recTitle='🔴 Requer entrevista aprofundada antes de avançar', recText=`Foram identificados ${flags.length} sinalizadores que podem indicar risco de saída precoce. Recomendado uma entrevista presencial focada nos pontos críticos antes de qualquer decisão de avanço.`;
-    const riskFlags = flags.filter(f => ['logistica_risco','reatividade_emocional','regulacao_risco','integridade_risco','adaptacao_risco','historico_muito_curto','fit_risco'].includes(f.flag));
-    if(pct >= 72 && riskFlags.length === 0){ verdict = '✓ Perfil recomendado'; verdictClass='verdict-green'; recClass='rec-green'; recTitle='🟢 Recomendado para avançar'; recText = `${candidateName} demonstrou boa estabilidade, regulação emocional e fit com a função. Sinalizadores comportamentais de risco não foram identificados. Avance para entrevista presencial ou etapa de admissão.`; }
-    else if(pct >= 50 && riskFlags.length <= 1){ verdict = '⚡ Avançar com atenção'; verdictClass='verdict-yellow'; recClass='rec-yellow'; recTitle='🟡 Avançar com plano de acompanhamento'; recText = `${candidateName} apresenta pontos positivos mas tem ${flags.length > 0 ? flags.length + ' sinalizador(es) de atenção' : 'algumas incertezas'}. Recomendado avançar com acompanhamento próximo nos primeiros 30 dias e alinhamento claro de expectativas na admissão.`; }
-
-    const ringColor = pct>=72 ? '#34c77b' : pct>=50 ? '#f0b429' : '#e05c5c';
-    const circumference = 2 * Math.PI * 44;
-    const offset = circumference - (pct/100)*circumference;
-
-    const dimOrder = ['regulacao','integridade','estabilidade','logistica','fit','aprendizado','atencao','autoconsciencia'];
-    let dimsHTML = '';
-    dimOrder.forEach(d => {
-      const v = dims[d]||0; const m = dimMax[d]||0;
-      const p = m > 0 ? Math.max(0, Math.min(100, Math.round((v/m)*100))) : 0;
-      const barClass = p>=70?'bar-green':p>=40?'bar-yellow':'bar-red';
-      const valColor = p>=70?'var(--green)':p>=40?'var(--yellow)':'var(--red)';
-      dimsHTML += `<div class="ind-card"><div class="ind-title">${dimLabel[d] || d}</div><div class="ind-bar-wrap"><div class="ind-bar-bg"><div class="ind-bar-fill ${barClass}" style="width:${p}%" data-w="${p}"></div></div><span class="ind-val" style="color:${valColor}">${p}%</span></div></div>`;
-    });
-
-    let flagsHTML = '';
-    if(!flags || flags.length === 0){ flagsHTML = `<div class="flag-item"><span class="flag-icon">✅</span><div class="flag-text"><strong>Nenhum sinalizador de risco identificado</strong><span>Todas as respostas dentro do perfil esperado.</span></div></div>`; }
-    else { flags.forEach(f => { const m = flagMeta[f.flag] || { icon:'⚠️', label:f.flag, desc:'' }; flagsHTML += `<div class="flag-item"><span class="flag-icon">${m.icon}</span><div class="flag-text"><strong>${m.label}</strong><span>${m.desc}</span></div></div>`; }); }
-
-    let openAnswersHTML = '';
-    if(openAnswers && openAnswers.length > 0){
-      const rows = openAnswers.map((item, idx)=>{
-        const qText = escapeHtml(item.question?.text || `Pergunta ${idx + 1}`);
-        const answer = escapeHtml(String(item.answer || '(sem resposta)')).replace(/\n/g, '<br/>');
-        return `<div class="flag-item"><span class="flag-icon">✍️</span><div class="flag-text"><strong>${qText}</strong><span>${answer}</span></div></div>`;
-      }).join('');
-      openAnswersHTML = `<div class="flags-section"><h3>Respostas abertas (${openAnswers.length})</h3>${rows}</div>`;
+    function getLevel(pct, dim){
+      if(String(dim||'').toLowerCase().includes('risco')){ if(pct>=60) return {label:'Alto',cls:'danger'}; if(pct>=35) return {label:'Médio',cls:'warn'}; return {label:'Baixo',cls:''}; }
+      if(pct>=70) return {label:'Alto',cls:''}; if(pct>=45) return {label:'Médio',cls:'warn'}; return {label:'Baixo',cls:'danger'};
+    }
+    function getBarClass(pct, dim){
+      if(String(dim||'').toLowerCase().includes('risco')){ if(pct>=60) return 'bar-red'; if(pct>=35) return 'bar-yellow'; return 'bar-teal'; }
+      if(pct>=70) return 'bar-teal'; if(pct>=45) return 'bar-yellow'; return 'bar-red';
     }
 
-    return `
-      <div class="result-header">
-        <span class="verdict-badge ${verdictClass}">${verdict}</span>
-        <div class="result-name">Resultado de <em>${escapeHtml(candidateName)}</em></div>
-        <div class="result-sub">Avaliação Comportamental &nbsp;·&nbsp; ${dateStr}</div>
-        <div class="score-ring-wrap"><div class="score-ring"><svg viewBox="0 0 100 100"><circle class="ring-bg" cx="50" cy="50" r="44" stroke-dasharray="${circumference}" stroke-dashoffset="0"/><circle class="ring-fill" cx="50" cy="50" r="44" stroke="${ringColor}" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" id="ring-anim"/></svg><div class="score-text"><span class="score-num" style="color:${ringColor}">${pct}%</span><span class="score-label">fit geral</span></div></div></div>
-      </div>
-      <div class="indicators-grid">${dimsHTML}</div>
-      <div class="flags-section"><h3>⚑ Sinalizadores comportamentais (${flags.length})</h3>${flagsHTML}</div>
-      ${openAnswersHTML}
-      <div class="recommendation ${recClass}"><h3>${recTitle}</h3><p>${recText}</p></div>
-      <p class="print-note">Este resultado é para uso interno do RH — não compartilhe com o candidato.</p>
-    `;
+    // Calculate per-dimension percentages with one decimal
+    const pcts = {};
+    dimsList.forEach(k=>{
+      const raw = (dims && dims[k]) || 0;
+      const denom = (DIM_MAX && DIM_MAX[k]) || 1;
+      const val = denom > 0 ? (raw/denom)*100 : 0;
+      pcts[k] = Math.round(val*10)/10;
+    });
+
+    const best = dimsList.slice().sort((a,b)=> (pcts[b]||0) - (pcts[a]||0))[0] || null;
+
+    const barsHTML = dimsList.map(d=>{ const p = pcts[d]||0; return `<div class="bar-row"><span class="bar-label">${d}</span><div class="bar-track"><div class="bar-fill ${getBarClass(p,d)}" style="width:${p}%" data-w="${p}"><span>${p.toFixed(1)}%</span></div></div></div>`; }).join('');
+
+    const cardsHTML = dimsList.map(d=>{ const p = pcts[d]||0; const lv = getLevel(p,d); const descObj = dimDescriptions[d] || { high:'', mid:'', low:'' }; const desc = (String(d).toLowerCase().includes('risco') ? (p>=60?descObj.high: p>=35?descObj.mid: descObj.low) : (p>=70?descObj.high: p>=45?descObj.mid: descObj.low)); return `<div class="dim-card ${lv.cls}"><div class="dim-card-title">${d} (${p.toFixed(1)}%) <span class="level">— ${lv.label}</span></div><p>${desc || 'Descrição disponível no painel do RH.'}</p></div>`; }).join('');
+
+    // deduplicate flags by flag name and show explanation once
+    let flagsHTML = '';
+    if(!flags || flags.length === 0){
+      flagsHTML = `<div class="flag-item"><span class="flag-icon">✅</span><div class="flag-text"><strong>Nenhum sinalizador de risco identificado</strong><span>Todas as respostas dentro do perfil esperado.</span></div></div>`;
+    } else {
+      const unique = Array.from(new Map(flags.map(f=>[f.flag,f])).values());
+      flagsHTML = unique.map(f=>{ const m = flagMeta[f.flag] || { icon:'⚠️', label:f.flag, desc:'' }; return `<div class="flag-item"><span class="flag-icon">${m.icon}</span><div class="flag-text"><strong>${m.label}</strong><span>${m.desc}</span></div></div>`; }).join('');
+    }
+
+    const openAnswersHTML = (openAnswers && openAnswers.length>0) ? openAnswers.map((it,idx)=>`<div class="flag-item"><span class="flag-icon">✍️</span><div class="flag-text"><strong>${escapeHtml(it.question?.text||'Pergunta')}</strong><span>${escapeHtml(String(it.answer||'(sem resposta)'))}</span></div></div>`).join('') : '';
+
+    const now = dateStr || new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+
+    return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Análise — ${escapeHtml(candidateName)}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#f9f7f4;--white:#fff;--ink:#1c1a18;--teal:#1a7f6e;--teal-light:#e8f5f2;--teal-mid:#2a9d88;--border:#e2ddd8;--muted:#8a857e;--yellow:#f59e0b;--red:#dc2626;--green:#16a34a;--bar-track:#e8e4df}
+    *{margin:0;padding:0;box-sizing:border-box}body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);padding:24px}
+    .rpt-header{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:12px}
+    .rpt-name{font-family:'Crimson Pro',serif;font-size:24px;font-weight:600;margin-bottom:4px}
+    .rpt-sub{font-size:13px;color:var(--muted);margin-bottom:6px}
+    .rpt-date{font-size:12px;color:var(--muted)}
+    .rpt-section{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:12px}
+    .rpt-section-title{font-family:'Crimson Pro',serif;font-size:18px;color:var(--teal);margin-bottom:12px}
+    .bar-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+    .bar-label{width:160px;font-size:13px;font-weight:500;text-align:right;flex-shrink:0}
+    .bar-track{flex:1;height:20px;background:var(--bar-track);border-radius:4px;overflow:hidden}
+    .bar-fill{height:100%;border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;color:#fff;font-weight:700}
+    .bar-teal{background:var(--teal)}.bar-yellow{background:var(--yellow)}.bar-red{background:var(--red)}
+    .dim-card{border-left:3px solid var(--teal);background:var(--bg);border-radius:0 8px 8px 0;padding:12px;margin-bottom:8px}
+    .dim-card.danger{border-left-color:var(--red)}.dim-card.warn{border-left-color:var(--yellow)}
+    .dim-card-title{font-size:14px;font-weight:700;margin-bottom:6px}
+    .flag-item{display:flex;gap:10px;padding:8px 0;border-top:1px solid rgba(0,0,0,0.03)}.flag-icon{width:30px}
+    .flag-text strong{display:block}
+    .btn-pdf{display:inline-block;padding:10px 18px;background:var(--teal);color:#fff;border-radius:999px;border:none}
+  </style>
+</head>
+<body>
+  <div class="rpt-header">
+    <div class="rpt-name">${escapeHtml(candidateName)}</div>
+    <div class="rpt-sub">Relatório • Análise</div>
+    <div class="rpt-date">Gerado em ${now}</div>
+  </div>
+
+  <div class="rpt-section">
+    <div class="rpt-section-title">Análise</div>
+    <div class="bar-chart">${barsHTML}</div>
+    ${cardsHTML}
+    <div class="flags-section"><h3>⚑ Sinalizadores (${(flags||[]).length})</h3>${flagsHTML}</div>
+    ${openAnswersHTML}
+  </div>
+
+  <div style="text-align:center;margin-top:8px"><button class="btn-pdf">⬇️ Baixar relatório em PDF</button></div>
+</body>
+</html>`;
   }
 
   function escapeHtml(str){ return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -245,7 +289,48 @@ export default function Home(){
 
       <div id="progress-bar"><div id="progress-fill" style={{width: `${Math.round((current/questions.length)*100)}%`}}></div></div>
 
-      {!started && !completed && (
+      {showTestSelection && !started && !completed && (
+        <div id="screen-test-selection" className="screen active" style={{justifyContent:'center',alignItems:'center',padding:'2rem',minHeight:'60vh',display:'flex'}}>
+          <div className="intro-card" style={{maxWidth:720}}>
+            <div className="logo-badge">🧠 Avaliação Comportamental</div>
+            <h1>Selecione o tipo de avaliação</h1>
+            <p>Escolha qual teste você deseja realizar:</p>
+            
+            <div style={{marginTop:32,display:'flex',flexDirection:'column',gap:12}}>
+              <button 
+                className="btn-primary select-btn" 
+                  onClick={()=>{setSelectedTest('comportamental'); setShowTestSelection(false);}}
+                style={{padding:'16px 20px',fontSize:16,height:'auto'}}
+              >
+                  <div style={{fontWeight:600,marginBottom:4}}>🧠 Teste Comportamental</div>
+                  <div style={{fontSize:13,opacity:0.9}}>Avaliação de competências comportamentais e situacionais</div>
+              </button>
+
+              <button 
+                className="btn-secondary select-btn" 
+                  onClick={()=>{setSelectedTest('etica'); setShowTestSelection(false);}}
+                style={{padding:'16px 20px',fontSize:16,height:'auto',borderColor:'var(--accent)',color:'var(--accent)'}}
+              >
+                  <div style={{fontWeight:600,marginBottom:4}}>⚖️ Teste de Ética</div>
+                  <div style={{fontSize:13,opacity:0.9}}>Avaliação de integridade, honestidade e conformidade</div>
+              </button>
+            </div>
+
+            <div style={{marginTop:16,display:'flex',justifyContent:'center'}}>
+              <button onClick={()=>window.location.href='/admin'} className="select-admin-btn">Painel administrativo</button>
+            </div>
+
+            <style jsx>{`
+              .select-btn{ transition: transform .14s ease, box-shadow .14s ease; border-radius:10px; }
+              .select-btn:hover{ transform: translateY(-6px); box-shadow: 0 14px 30px rgba(16,24,40,0.12); }
+              .select-admin-btn{ margin-top:6px; padding:10px 18px; border-radius:999px; border:1px solid rgba(26,127,110,0.12); background:transparent; color:var(--teal); cursor:pointer; transition: transform .12s ease, box-shadow .12s ease; }
+              .select-admin-btn:hover{ transform: translateY(-4px); box-shadow: 0 8px 20px rgba(16,24,40,0.08); background: rgba(26,127,110,0.04); }
+            `}</style>
+          </div>
+        </div>
+      )}
+
+      {!showTestSelection && !started && !completed && (
         <div id="screen-intro" className="screen active">
           <div className="intro-card">
             <div className="logo-badge">🧠 Avaliação Comportamental</div>
@@ -255,6 +340,7 @@ export default function Home(){
             <div className="name-input-wrap"><label>Seu nome completo</label><input value={candidateName} onChange={e=>setCandidateName(e.target.value)} placeholder="Ex: Maria Silva" /></div>
             <button className="btn-primary" onClick={startQuiz} disabled={candidateName.trim().length < 2 || questions.length === 0}>Iniciar avaliação →</button>
             <button className="btn-secondary" onClick={()=>window.location.href='/admin/login'} style={{marginTop:10,width:'100%',justifyContent:'center'}}>Acessar área administrativa</button>
+            <button className="btn-secondary" onClick={()=>{setShowTestSelection(true); setCandidateName('');}} style={{marginTop:8,width:'100%',justifyContent:'center',borderColor:'rgba(200,200,200,.3)',color:'var(--muted)'}}>← Trocar de teste</button>
           </div>
         </div>
       )}

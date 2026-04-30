@@ -10,6 +10,7 @@ export default function Admin(){
   const [questions, setQuestions] = useState([]);
   const [questionSearch, setQuestionSearch] = useState('');
   const [questionTypeFilter, setQuestionTypeFilter] = useState('all');
+  const [questionTab, setQuestionTab] = useState('antigo'); // 'antigo' | 'comportamental' | 'etica' | 'all'
   const [users, setUsers] = useState([]);
   const [userForm, setUserForm] = useState({ name:'', username:'', email:'', role:'admin', password:'', active:true });
   const [editingUserId, setEditingUserId] = useState('');
@@ -51,7 +52,7 @@ export default function Admin(){
     }catch(e){ console.warn(e); }
   }
 
-  function openNewQuestion(){ setQModal({ open:true, data: { type:'options', text:'', options:[], dimension:'', catClass:'cat-val' } }); }
+  function openNewQuestion(){ setQModal({ open:true, data: { type:'options', text:'', options:[], dimension:'', catClass:'cat-val', test_type: 'antigo' } }); }
 
   function openEditQuestion(q){ setQModal({ open:true, data: q }); }
 
@@ -81,11 +82,17 @@ export default function Admin(){
   }
   
 
-  async function downloadPdf(id){
+  async function downloadPdf(submission){
     setIsGeneratingPdf(true);
     try{
-      const r = await fetch('/api/admin/pdf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
-      if(r.ok){ const blob = await r.blob(); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`relatorio-${id}.pdf`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }
+      const r = await fetch('/api/admin/pdf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id: submission._id || submission.id})});
+      if(r.ok){ const blob = await r.blob(); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; 
+        // build filename client-side as fallback
+        function slugify(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,''); }
+        const baseName = submission.name ? slugify(submission.name) : (submission.id || 'relatorio');
+        const typeLabel = submission.test_type ? slugify(submission.test_type) : 'relatorio';
+        const filename = `${baseName}_${typeLabel}.pdf`;
+        a.download = filename; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }
       else { const j=await r.json(); alert('Erro: '+(j.error||r.status)); }
     }catch(e){ alert('Erro ao gerar PDF: '+String(e)); }
     finally{ setIsGeneratingPdf(false); }
@@ -193,7 +200,12 @@ export default function Admin(){
       : (q.text || '').toLowerCase().includes(search)
         || (q.category || '').toLowerCase().includes(search)
         || (q.dimension || '').toLowerCase().includes(search);
-    return matchesType && matchesSearch;
+    // tab filtering: separate by test_type
+    let matchesTab = true;
+    if(questionTab === 'comportamental') matchesTab = q.test_type === 'comportamental';
+    else if(questionTab === 'etica') matchesTab = q.test_type === 'etica';
+    else if(questionTab === 'antigo') matchesTab = !(q.test_type === 'comportamental' || q.test_type === 'etica');
+    return matchesType && matchesSearch && matchesTab;
   });
 
   if(!authChecked) return null;
@@ -238,6 +250,7 @@ export default function Admin(){
                       <thead>
                         <tr style={{textAlign:'left',color:'var(--muted)',fontSize:13}}>
                           <th style={{padding:'8px 6px'}}>Nome</th>
+                            <th style={{padding:'8px 6px'}}>Tipo</th>
                           <th style={{padding:'8px 6px'}}>Data</th>
                           <th style={{padding:'8px 6px'}}>Score</th>
                           <th style={{padding:'8px 6px'}}>Sinalizadores</th>
@@ -248,15 +261,16 @@ export default function Admin(){
                         {subs.map(s=> (
                           <tr key={s._id} style={{borderTop:'1px solid var(--border)'}}>
                             <td style={{padding:10}}>{s.name}</td>
+                            <td style={{padding:10,color:'var(--muted)'}}>{s.test_type || 'antigo'}</td>
                             <td style={{padding:10,color:'var(--muted)'}}>{new Date(s.createdAt).toLocaleString('pt-BR')}</td>
                             <td style={{padding:10}}>{s.pct}%</td>
-                            <td style={{padding:10,color:'var(--muted)'}}>{(s.flags||[]).map(f=>f.flag).join(', ')}</td>
+                            <td style={{padding:10,color:'var(--muted)'}}>{Array.from(new Set((s.flags||[]).map(f=>f.flag))).filter(Boolean).join(', ')}</td>
                             <td style={{padding:10,textAlign:'right'}}>
   <div style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
     
     <button 
       className="btn-primary" 
-                      onClick={()=>downloadPdf(s._id)} 
+                      onClick={()=>downloadPdf(s)} 
                       disabled={isGeneratingPdf}
                       style={{padding:'8px 10px',fontSize:13,opacity: isGeneratingPdf ? 0.6 : 1,cursor: isGeneratingPdf ? 'not-allowed' : 'pointer'}}
                     >
@@ -325,10 +339,28 @@ export default function Admin(){
                 <button className="btn-secondary" onClick={()=>fetchQuestions()}>Atualizar</button>
                 <button className="btn-secondary" onClick={async ()=>{
                   if(!confirm('Importar questões iniciais do projeto para o banco? Isso não irá duplicar se já existirem.')) return;
-                  const r = await fetch('/api/admin/import-questions',{method:'POST'});
-                  const j = await r.json(); if(r.ok) { alert('Importado: '+(j.inserted||0)); fetchQuestions(); } else { alert('Import falhou: '+(j.msg||j.error||r.status)); }
+                  const r = await fetch('/api/admin/import-new-tests',{method:'POST'});
+                  const j = await r.json().catch(()=>null);
+                  if(r.ok){
+                    alert(`Import concluído. Comportamental: ${j.sjtInserted || 0}, Ética: ${j.ethicsInserted || 0}`);
+                    fetchQuestions();
+                  } else {
+                    alert('Import falhou: '+(j?.error||j?.msg||r.status));
+                  }
                 }}>Importar</button>
                 <button className="btn-primary" style={{width:'auto',padding:'0.7rem 1.2rem'}} onClick={openNewQuestion}>Nova pergunta</button>
+              </div>
+            </div>
+
+            <div style={{marginTop:12,display:'flex',gap:8,alignItems:'center'}}>
+              <div style={{display:'flex',gap:6}}>
+                <button className={questionTab==='antigo' ? 'btn-primary' : 'btn-secondary'} onClick={()=>setQuestionTab('antigo')}>Relatório antigo</button>
+                <button className={questionTab==='comportamental' ? 'btn-primary' : 'btn-secondary'} onClick={()=>setQuestionTab('comportamental')}>Comportamental</button>
+                <button className={questionTab==='etica' ? 'btn-primary' : 'btn-secondary'} onClick={()=>setQuestionTab('etica')}>Ética</button>
+                <button className={questionTab==='all' ? 'btn-primary' : 'btn-secondary'} onClick={()=>setQuestionTab('all')}>Todas</button>
+              </div>
+              <div style={{marginLeft:'auto',color:'var(--muted)'}}>
+                Aba atual: {questionTab}
               </div>
             </div>
 
@@ -504,7 +536,7 @@ export default function Admin(){
 
 // Simple modal UI for editing question as JSON
 export function QuestionModal({ open, data, onClose, onSave }){
-  const defaultForm = { type:'options', category:'Situação Prática', catClass:'cat-sit', dimension:'regulacao', text:'', options:[{letter:'A',text:'',score:3,flag:null},{letter:'B',text:'',score:2,flag:null}], correctAnswer:null, minLength:30 };
+  const defaultForm = { type:'options', category:'Situação Prática', catClass:'cat-sit', dimension:'regulacao', test_type:'antigo', text:'', options:[{letter:'A',text:'',score:3,flag:null},{letter:'B',text:'',score:2,flag:null}], correctAnswer:null, minLength:30 };
   const [form, setForm] = useState(defaultForm);
 
   useEffect(()=>{
@@ -600,6 +632,14 @@ export function QuestionModal({ open, data, onClose, onSave }){
             <label>Categoria</label>
             <select value={form.category} onChange={e=>{ const sel = e.target.value; setField('category', sel); const found = categories.find(c=>c.value===sel); if(found) setField('catClass', found.catClass); }} style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border)',padding:10,borderRadius:8,color:'var(--text)',fontFamily:'Sora,Arial,Helvetica',fontSize:14}}>
               {categories.map(c=> (<option key={c.value} value={c.value}>{c.label}</option>))}
+            </select>
+          </div>
+          <div className="name-input-wrap">
+            <label>Relatório / Teste</label>
+            <select value={form.test_type||'antigo'} onChange={e=>setField('test_type', e.target.value)} style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border)',padding:10,borderRadius:8,color:'var(--text)',fontFamily:'Sora,Arial,Helvetica',fontSize:14}}>
+              <option value="antigo">Relatório antigo</option>
+              <option value="comportamental">Comportamental</option>
+              <option value="etica">Ética</option>
             </select>
           </div>
           <div className="name-input-wrap">

@@ -64,8 +64,21 @@ export default async function handler(req,res){
     let css = '';
     try { css = fs.readFileSync(cssPath, 'utf8'); } catch (e) { console.warn('Could not read global.css', e); }
     const fonts = `<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,400&display=swap" rel="stylesheet">`;
-    const bodyHtml = doc.html || (`<div><h1>Resultado de ${doc.name || ''}</h1><p>Score: ${doc.pct}%</p></div>`);
-    const fullHtml = `<!doctype html><html><head><meta charset="utf-8">${fonts}<style>${css}</style></head><body>${bodyHtml}</body></html>`;
+    let bodyHtml = doc.html || (`<div><h1>Resultado de ${doc.name || ''}</h1><p>Score: ${doc.pct}%</p></div>`);
+    // Strip interactive download buttons or controls that should not appear in printed PDF
+    try{
+      bodyHtml = bodyHtml.replace(/<button[^>]*class=["']?btn-pdf["']?[^>]*>[\s\S]*?<\/button>/gi, '');
+      // also remove any script tags for safety
+      bodyHtml = bodyHtml.replace(/<script[\s\S]*?<\/script>/gi, '');
+    }catch(e){ /* ignore */ }
+
+    // If saved HTML already contains a full document, use it directly; otherwise wrap with head/style
+    let fullHtml = '';
+    if(/<html[\s>]/i.test(bodyHtml) || /<!doctype/i.test(bodyHtml)){
+      fullHtml = bodyHtml;
+    } else {
+      fullHtml = `<!doctype html><html><head><meta charset="utf-8">${fonts}<style>${css}</style></head><body>${bodyHtml}</body></html>`;
+    }
 
     const browser = await launchPdfBrowser();
     const page = await browser.newPage();
@@ -73,8 +86,14 @@ export default async function handler(req,res){
     const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true });
     await browser.close();
 
+    // Build a friendly filename using candidate name and test type
+    function slugify(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,''); }
+    const baseName = doc.name ? slugify(doc.name) : (doc.id || 'relatorio');
+    const typeLabel = doc.test_type ? slugify(doc.test_type) : 'relatorio';
+    const filename = `${baseName}_${typeLabel}.pdf`;
+
     res.setHeader('Content-Type','application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="relatorio-${doc.id}.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     return res.status(200).send(pdfBuffer);
   }catch(e){ console.error('pdf error', e); return res.status(500).json({ error:String(e) }); }
 }
