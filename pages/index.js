@@ -240,7 +240,7 @@ export default function Home(){
   return (
     <>
       <Head>
-        <title>Avaliação Comportamental — Operador de Caixa</title>
+        <title>Avaliação Comportamental</title>
       </Head>
 
       <div id="progress-bar"><div id="progress-fill" style={{width: `${Math.round((current/questions.length)*100)}%`}}></div></div>
