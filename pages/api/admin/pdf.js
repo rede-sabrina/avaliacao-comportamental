@@ -1,3 +1,4 @@
+import { ObjectId } from 'mongodb';
 import { clientPromise } from '../../../lib/mongodb';
 import fs from 'fs';
 import path from 'path';
@@ -43,7 +44,18 @@ export default async function handler(req,res){
     const client = await clientPromise;
     const db = client.db(process.env.MONGODB_DB || 'avaliacao');
     const col = db.collection('submissions');
-    const doc = await col.findOne({ id });
+    
+    // Try to find by _id (ObjectId) first, then fallback to id (string or number)
+    let doc = null;
+    if(ObjectId.isValid(String(id))){
+      doc = await col.findOne({ _id: new ObjectId(String(id)) });
+    }
+    if(!doc){
+      doc = await col.findOne({ id: String(id) });
+    }
+    if(!doc && !Number.isNaN(Number(id))){
+      doc = await col.findOne({ id: Number(id) });
+    }
     if(!doc) return res.status(404).json({ error:'not found' });
 
     // generate PDF from stored HTML using puppeteer
