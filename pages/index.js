@@ -204,6 +204,21 @@ export default function Home(){
       calculo_erro: { icon:'🧮', label:'Erro no cálculo', desc:'Verificar atenção numérica — pode precisar de reforço.' }
     };
 
+    // Additional suggested flags (ethics + behavioral)
+    flagMeta.relativizacao_limites = { icon:'⚠️', label:'Relativização de limites', desc:'Tende a justificar transgressões ou minimizar impactos éticos.' };
+    flagMeta.conflito_interesse = { icon:'⚠️', label:'Conflito de interesse', desc:'Prioriza interesses pessoais em detrimento de regras ou clientes.' };
+    flagMeta.omissao_report = { icon:'⚠️', label:'Omissão de reporte', desc:'Hesita ou omite reportar irregularidades ou problemas.' };
+    flagMeta.falsificacao_informacao = { icon:'⚠️', label:'Falsificação/omissão de informação', desc:'Propensão a mentir ou omitir informações relevantes.' };
+    flagMeta.pressao_companhia = { icon:'⚠️', label:'Influência do grupo', desc:'Acata grupo/pares mesmo quando contraria normas.' };
+    flagMeta.risco_conformidade = { icon:'⚠️', label:'Risco à conformidade', desc:'Padrões de resposta apontam risco de não seguir políticas.' };
+
+    // Behavioral flags
+    flagMeta.proatividade_baixa = { icon:'⚠️', label:'Baixa proatividade', desc:'Tende a esperar instruções em vez de tomar iniciativa.' };
+    flagMeta.autonomia_baixa = { icon:'⚠️', label:'Autonomia reduzida', desc:'Precisa de supervisão constante para executar tarefas.' };
+    flagMeta.comprometimento_baixo = { icon:'⚠️', label:'Baixo comprometimento', desc:'Indicadores de baixa assiduidade ou descumprimento de combinados.' };
+    flagMeta.colaboracao_fraca = { icon:'⚠️', label:'Colaboração fraca', desc:'Prefere trabalhar isolado e evita cooperação com o time.' };
+    flagMeta.adaptabilidade_baixa = { icon:'⚠️', label:'Baixa adaptabilidade', desc:'Dificuldade em aceitar mudanças de processo ou ritmo.' };
+
     // Additional flags descriptions (from seeds)
     flagMeta.resistencia_feedback = { icon:'⚠️', label:'Resistência a feedback', desc:'Reluta em aceitar feedback; pode dificultar desenvolvimento.' };
     flagMeta.conflito_relacional = { icon:'⚠️', label:'Conflito relacional', desc:'Tende a tomar partido em conflitos internos — risco para clima.' };
