@@ -198,10 +198,18 @@ export default function Home(){
       integridade_risco: { icon:'🔒', label:'Atenção à integridade', desc:'Tendência a evitar reporte de erros — ponto crítico para a função.' },
       adaptacao_risco: { icon:'⚠️', label:'Dificuldade de adaptação', desc:'Não se adaptou ao ritmo ou regras do emprego anterior.' },
       historico_muito_curto: { icon:'⚠️', label:'Padrão de saída rápida', desc:'Verificar motivos de desligamentos precoces.' },
+      historico_curto: { icon:'⚠️', label:'Histórico curto', desc:'Possível padrão de mudanças frequentes de emprego; investigar motivos.' },
       postura_passiva: { icon:'⚠️', label:'Postura passiva em conflito', desc:'Pode gerar omissão em situações de cliente/turno.' },
       reatividade_baixa: { icon:'⚠️', label:'Baixa proatividade', desc:'Espera instruções ao invés de agir — precisa de acompanhamento.' },
       calculo_erro: { icon:'🧮', label:'Erro no cálculo', desc:'Verificar atenção numérica — pode precisar de reforço.' }
     };
+
+    // Additional flags descriptions (from seeds)
+    flagMeta.resistencia_feedback = { icon:'⚠️', label:'Resistência a feedback', desc:'Reluta em aceitar feedback; pode dificultar desenvolvimento.' };
+    flagMeta.conflito_relacional = { icon:'⚠️', label:'Conflito relacional', desc:'Tende a tomar partido em conflitos internos — risco para clima.' };
+    flagMeta.core_dificuldade = { icon:'⚠️', label:'Dificuldade operacional', desc:'Possível dificuldade com tarefas centrais do cargo; requer atenção.' };
+    flagMeta.conciliacao_risco = { icon:'⚠️', label:'Risco de conciliação', desc:'Dificuldade em conciliar compromissos, podendo afetar presença.' };
+    flagMeta.conciliacao_incerta = { icon:'⚠️', label:'Conciliação incerta', desc:'Incerteza em cumprir combinados; precisa de acompanhamento.' };
 
     function getLevel(pct, dim){
       if(String(dim||'').toLowerCase().includes('risco')){ if(pct>=60) return {label:'Alto',cls:'danger'}; if(pct>=35) return {label:'Médio',cls:'warn'}; return {label:'Baixo',cls:''}; }
