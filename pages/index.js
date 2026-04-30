@@ -224,7 +224,7 @@ export default function Home(){
       <div class="result-header">
         <span class="verdict-badge ${verdictClass}">${verdict}</span>
         <div class="result-name">Resultado de <em>${escapeHtml(candidateName)}</em></div>
-        <div class="result-sub">Avaliação Comportamental — Operador(a) de Caixa &nbsp;·&nbsp; ${dateStr}</div>
+        <div class="result-sub">Avaliação Comportamental &nbsp;·&nbsp; ${dateStr}</div>
         <div class="score-ring-wrap"><div class="score-ring"><svg viewBox="0 0 100 100"><circle class="ring-bg" cx="50" cy="50" r="44" stroke-dasharray="${circumference}" stroke-dashoffset="0"/><circle class="ring-fill" cx="50" cy="50" r="44" stroke="${ringColor}" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" id="ring-anim"/></svg><div class="score-text"><span class="score-num" style="color:${ringColor}">${pct}%</span><span class="score-label">fit geral</span></div></div></div>
       </div>
       <div class="indicators-grid">${dimsHTML}</div>
