@@ -18,6 +18,7 @@ export default function Admin(){
   const [qModal, setQModal] = useState({ open:false, data:null });
   const [showView, setShowView] = useState(false);
   const [viewQ, setViewQ] = useState(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   useEffect(()=>{
     setToken('cookie-session');
@@ -81,9 +82,13 @@ export default function Admin(){
   
 
   async function downloadPdf(id){
-    const r = await fetch('/api/admin/pdf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
-    if(r.ok){ const blob = await r.blob(); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`relatorio-${id}.pdf`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }
-    else { const j=await r.json(); alert('Erro: '+(j.error||r.status)); }
+    setIsGeneratingPdf(true);
+    try{
+      const r = await fetch('/api/admin/pdf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
+      if(r.ok){ const blob = await r.blob(); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`relatorio-${id}.pdf`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }
+      else { const j=await r.json(); alert('Erro: '+(j.error||r.status)); }
+    }catch(e){ alert('Erro ao gerar PDF: '+String(e)); }
+    finally{ setIsGeneratingPdf(false); }
   }
 
   function startNewUser(){
@@ -251,19 +256,13 @@ export default function Admin(){
     
     <button 
       className="btn-primary" 
-      onClick={()=>downloadPdf(s.id)} 
-      style={{padding:'8px 10px',fontSize:13}}
-    >
-      PDF
-    </button>
+                      onClick={()=>downloadPdf(s._id)} 
+                      disabled={isGeneratingPdf}
+                      style={{padding:'8px 10px',fontSize:13,opacity: isGeneratingPdf ? 0.6 : 1,cursor: isGeneratingPdf ? 'not-allowed' : 'pointer'}}
+                    >
+                      {isGeneratingPdf ? 'Gerando...' : 'PDF'}
+                    </button>
 
-    <button 
-      className="btn-secondary" 
-      onClick={()=>deleteReport(s._id)} 
-      style={{padding:'8px 10px',fontSize:13,borderColor:'rgba(224,92,92,.35)',color:'#f2b7b7'}}
-    >
-      Excluir
-    </button>
 
   </div>
 </td>
@@ -441,6 +440,22 @@ export default function Admin(){
                 </table>
                 {users.length === 0 && <div style={{padding:12,color:'var(--light)'}}>Nenhum usuário cadastrado.</div>}
               </div>
+            </div>
+          </div>
+        )}
+        
+        {/* PDF generation modal */}
+        {isGeneratingPdf && (
+          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1300}}>
+            <div style={{background:'var(--surface)',color:'var(--text)',padding:32,borderRadius:14,textAlign:'center',boxShadow:'0 4px 20px rgba(0,0,0,.2)'}}>
+              <div style={{fontSize:18,fontWeight:600,marginBottom:12}}>⏳ Relatório sendo gerado</div>
+              <div style={{fontSize:14,color:'var(--muted)'}}>Por favor, aguarde...</div>
+              <div style={{marginTop:20,display:'flex',justifyContent:'center',gap:6}}>
+                <div style={{width:8,height:8,borderRadius:'50%',background:'var(--accent)',animation:'pulse 1.4s infinite'}}></div>
+                <div style={{width:8,height:8,borderRadius:'50%',background:'var(--accent)',animation:'pulse 1.4s infinite',animationDelay:'0.2s'}}></div>
+                <div style={{width:8,height:8,borderRadius:'50%',background:'var(--accent)',animation:'pulse 1.4s infinite',animationDelay:'0.4s'}}></div>
+              </div>
+              <style>{`@keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }`}</style>
             </div>
           </div>
         )}
