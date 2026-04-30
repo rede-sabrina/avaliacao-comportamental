@@ -251,7 +251,7 @@ export default function Home(){
             <div className="logo-badge">🧠 Avaliação Comportamental</div>
             <h1>Você está a um passo de<br/><em>fazer parte do time</em></h1>
             <p>Este questionário nos ajuda a entender melhor o seu perfil. Não há respostas certas ou erradas — seja honesto(a).</p>
-            <div className="meta-list"><span className="meta-item"><span className="dot"></span> ~8 minutos</span><span className="meta-item"><span className="dot"></span>{questions.length} perguntas</span><span className="meta-item"><span className="dot"></span> Operador(a) de Caixa</span></div>
+            <div className="meta-list"><span className="meta-item"><span className="dot"></span> ~8 minutos</span><span className="meta-item"><span className="dot"></span>{questions.length} perguntas</span></div>
             <div className="name-input-wrap"><label>Seu nome completo</label><input value={candidateName} onChange={e=>setCandidateName(e.target.value)} placeholder="Ex: Maria Silva" /></div>
             <button className="btn-primary" onClick={startQuiz} disabled={candidateName.trim().length < 2 || questions.length === 0}>Iniciar avaliação →</button>
             <button className="btn-secondary" onClick={()=>window.location.href='/admin/login'} style={{marginTop:10,width:'100%',justifyContent:'center'}}>Acessar área administrativa</button>
