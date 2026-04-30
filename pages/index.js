@@ -102,21 +102,31 @@ export default function Home(){
     const flags = [];
     const dims = {};
     const dimMax = {};
+    const questionMax = [];
 
-    // Build dynamic maximums from current question set so each dimension stays in 0-100%.
-    questions.forEach((q)=>{
-      if(!q.dimension) return;
-      dimMax[q.dimension] = (dimMax[q.dimension] || 0) + 3;
-      if(dims[q.dimension] === undefined) dims[q.dimension] = 0;
+    // Build dynamic maximums per question (use option max when available)
+    questions.forEach((q,i)=>{
+      let qMax = 3;
+      if(q.type === 'options' && Array.isArray(q.options) && q.options.length){
+        qMax = Math.max(...q.options.map(o=>Number(o.score||0)));
+        if(!isFinite(qMax) || qMax <= 0) qMax = 3;
+      }
+      questionMax[i] = qMax;
+
+      if(q.dimension){
+        dimMax[q.dimension] = (dimMax[q.dimension] || 0) + qMax;
+        if(dims[q.dimension] === undefined) dims[q.dimension] = 0;
+      }
     });
 
     questions.forEach((q,i)=>{
       const ans = answers[i];
+      const qMax = questionMax[i] || 3;
       if(q.type==='options' && ans !== null){
         const opt = q.options?.[ans];
         const pts = Number(opt?.score || 0);
         total += pts;
-        max += 3;
+        max += qMax;
         if(q.dimension) dims[q.dimension] = (dims[q.dimension] || 0) + pts;
         if(opt?.flag) flags.push({flag:opt.flag,q:q.id});
       }
@@ -126,7 +136,7 @@ export default function Home(){
         const correct = Math.abs(raw - correctVal) < 0.01;
         const pts = correct ? 3 : (Math.abs(raw - correctVal) < 1 ? 1 : 0);
         total += pts;
-        max += 3;
+        max += qMax;
         if(q.dimension) dims[q.dimension] = (dims[q.dimension] || 0) + pts;
         if(!correct) flags.push({flag:'calculo_erro',q:q.id});
       }
@@ -134,7 +144,7 @@ export default function Home(){
         const len = (ans || '').trim().length;
         const pts = len > 100 ? 3 : len > 50 ? 2 : len > 20 ? 1 : 0;
         total += pts;
-        max += 3;
+        max += qMax;
         if(q.dimension) dims[q.dimension] = (dims[q.dimension] || 0) + pts;
       }
     });
@@ -218,12 +228,12 @@ export default function Home(){
     const cardsHTML = dimsList.map(d=>{ const p = pcts[d]||0; const lv = getLevel(p,d); const descObj = dimDescriptions[d] || { high:'', mid:'', low:'' }; const desc = (String(d).toLowerCase().includes('risco') ? (p>=60?descObj.high: p>=35?descObj.mid: descObj.low) : (p>=70?descObj.high: p>=45?descObj.mid: descObj.low)); return `<div class="dim-card ${lv.cls}"><div class="dim-card-title">${d} (${p.toFixed(1)}%) <span class="level">— ${lv.label}</span></div><p>${desc || 'Descrição disponível no painel do RH.'}</p></div>`; }).join('');
 
     // deduplicate flags by flag name and show explanation once
+    const uniqueFlags = (flags && flags.length) ? Array.from(new Map(flags.map(f=>[f.flag,f])).values()) : [];
     let flagsHTML = '';
-    if(!flags || flags.length === 0){
+    if(uniqueFlags.length === 0){
       flagsHTML = `<div class="flag-item"><span class="flag-icon">✅</span><div class="flag-text"><strong>Nenhum sinalizador de risco identificado</strong><span>Todas as respostas dentro do perfil esperado.</span></div></div>`;
     } else {
-      const unique = Array.from(new Map(flags.map(f=>[f.flag,f])).values());
-      flagsHTML = unique.map(f=>{ const m = flagMeta[f.flag] || { icon:'⚠️', label:f.flag, desc:'' }; return `<div class="flag-item"><span class="flag-icon">${m.icon}</span><div class="flag-text"><strong>${m.label}</strong><span>${m.desc}</span></div></div>`; }).join('');
+      flagsHTML = uniqueFlags.map(f=>{ const m = flagMeta[f.flag] || { icon:'⚠️', label:f.flag, desc:'' }; return `<div class="flag-item"><span class="flag-icon">${m.icon}</span><div class="flag-text"><strong>${m.label}</strong><span>${m.desc}</span></div></div>`; }).join('');
     }
 
     const openAnswersHTML = (openAnswers && openAnswers.length>0) ? openAnswers.map((it,idx)=>`<div class="flag-item"><span class="flag-icon">✍️</span><div class="flag-text"><strong>${escapeHtml(it.question?.text||'Pergunta')}</strong><span>${escapeHtml(String(it.answer||'(sem resposta)'))}</span></div></div>`).join('') : '';
@@ -266,11 +276,11 @@ export default function Home(){
     <div class="rpt-date">Gerado em ${now}</div>
   </div>
 
-  <div class="rpt-section">
+    <div class="rpt-section">
     <div class="rpt-section-title">Análise</div>
     <div class="bar-chart">${barsHTML}</div>
     ${cardsHTML}
-    <div class="flags-section"><h3>⚑ Sinalizadores (${(flags||[]).length})</h3>${flagsHTML}</div>
+    <div class="flags-section"><h3>⚑ Sinalizadores (${uniqueFlags.length})</h3>${flagsHTML}</div>
     ${openAnswersHTML}
   </div>
 
@@ -390,6 +400,9 @@ export default function Home(){
             <div className="logo-badge">✅ Concluído</div>
             <h1>Obrigado por concluir</h1>
             <p>Seu questionário foi enviado com sucesso. Nossa equipe vai analisar as respostas e retornar em breve.</p>
+            <div style={{marginTop:12,display:'flex',gap:8,justifyContent:'center'}}>
+              <button className="btn-primary" onClick={()=>{ setShowTestSelection(true); setCompleted(false); setSelectedTest(null); setAnswers([]); setCurrent(0); setStarted(false); }} style={{padding:'10px 16px'}}>Voltar ao início</button>
+            </div>
           </div>
         </div>
       )}

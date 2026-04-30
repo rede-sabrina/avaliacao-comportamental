@@ -263,7 +263,27 @@ export default function Admin(){
                             <td style={{padding:10}}>{s.name}</td>
                             <td style={{padding:10,color:'var(--muted)'}}>{s.test_type || 'antigo'}</td>
                             <td style={{padding:10,color:'var(--muted)'}}>{new Date(s.createdAt).toLocaleString('pt-BR')}</td>
-                            <td style={{padding:10}}>{s.pct}%</td>
+                            <td style={{padding:10}}>{(()=>{
+                              try{
+                                const dims = s.dims || {};
+                                const dimMax = s.dimMax || {};
+                                const keys = Object.keys(dimMax).length ? Object.keys(dimMax) : Object.keys(dims || {});
+                                if(!keys || keys.length === 0) return (s.pct || 0) + '%';
+                                const pcts = keys.map(k=>{
+                                  const raw = dims[k] || 0;
+                                  const denom = dimMax[k] || 1;
+                                  let val = 0;
+                                  if(String(k||'').toLowerCase().includes('risco')){
+                                    val = denom > 0 ? ((denom - raw) / denom) * 100 : 0;
+                                  } else {
+                                    val = denom > 0 ? (raw/denom)*100 : 0;
+                                  }
+                                  return Math.round(val*10)/10;
+                                });
+                                const mean = Math.round((pcts.reduce((a,b)=>a+b,0)/pcts.length)*10)/10;
+                                return mean + '%';
+                              }catch(_e){ return (s.pct || 0) + '%'; }
+                            })()}</td>
                             <td style={{padding:10,color:'var(--muted)'}}>{Array.from(new Set((s.flags||[]).map(f=>f.flag))).filter(Boolean).join(', ')}</td>
                             <td style={{padding:10,textAlign:'right'}}>
   <div style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
