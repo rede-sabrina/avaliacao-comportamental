@@ -195,7 +195,7 @@ export default function Home(){
     // flags meta (more complete)
     const flagMeta = {
       integridade_passiva: { icon:'⚠️', label:'Integridade passiva', desc:'Não esconde, mas hesita em reportar — orientar no onboarding.' },
-      integridade_risco: { icon:'🔒', label:'Atenção à integridade', desc:'Tendência a evitar reporte de erros — ponto crítico para a função.' },
+      integridade_risco: { icon:'🔒', label:'Atenção à integridade', desc:'Tendência a evitar comunicação de erros — ponto crítico para a função.' },
       adaptacao_risco: { icon:'⚠️', label:'Dificuldade de adaptação', desc:'Não se adaptou ao ritmo ou regras do emprego anterior.' },
       historico_muito_curto: { icon:'⚠️', label:'Padrão de saída rápida', desc:'Verificar motivos de desligamentos precoces.' },
       historico_curto: { icon:'⚠️', label:'Histórico curto', desc:'Possível padrão de mudanças frequentes de emprego; investigar motivos.' },
@@ -236,11 +236,18 @@ export default function Home(){
     }
 
     // Calculate per-dimension percentages with one decimal
+    // For dimensions that represent a RISK (contain 'risco'), invert the score
+    // so that higher values mean higher risk (0..100%).
     const pcts = {};
     dimsList.forEach(k=>{
       const raw = (dims && dims[k]) || 0;
       const denom = (DIM_MAX && DIM_MAX[k]) || 1;
-      const val = denom > 0 ? (raw/denom)*100 : 0;
+      let val = 0;
+      if(String(k||'').toLowerCase().includes('risco')){
+        val = denom > 0 ? ((denom - raw) / denom) * 100 : 0;
+      } else {
+        val = denom > 0 ? (raw/denom)*100 : 0;
+      }
       pcts[k] = Math.round(val*10)/10;
     });
 

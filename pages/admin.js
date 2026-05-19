@@ -274,11 +274,15 @@ export default function Admin(){
                                   const denom = dimMax[k] || 1;
                                   let val = 0;
                                   if(String(k||'').toLowerCase().includes('risco')){
+                                    // val is risk percentage (higher = worse)
                                     val = denom > 0 ? ((denom - raw) / denom) * 100 : 0;
                                   } else {
+                                    // val is positive competency percentage (higher = better)
                                     val = denom > 0 ? (raw/denom)*100 : 0;
                                   }
-                                  return Math.round(val*10)/10;
+                                  // For overall score we want a "higher is better" metric:
+                                  const goodness = String(k||'').toLowerCase().includes('risco') ? (100 - val) : val;
+                                  return Math.round(goodness*10)/10;
                                 });
                                 const mean = Math.round((pcts.reduce((a,b)=>a+b,0)/pcts.length)*10)/10;
                                 return mean + '%';
