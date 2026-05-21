@@ -20,6 +20,28 @@ export default function Admin(){
   const [showView, setShowView] = useState(false);
   const [viewQ, setViewQ] = useState(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [dateFromInput, setDateFromInput] = useState('');
+  const [dateToInput, setDateToInput] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 15;
+
+  function applyFilters(){
+    setDateFrom(dateFromInput);
+    setDateTo(dateToInput);
+    setPage(1);
+  }
+
+  function clearFilters(){
+    setDateFrom(''); setDateTo(''); setDateFromInput(''); setDateToInput(''); setSearchTerm(''); setPage(1);
+  }
+
+  useEffect(()=>{
+    setDateFromInput(dateFrom || '');
+    setDateToInput(dateTo || '');
+  },[dateFrom,dateTo]);
 
   useEffect(()=>{
     setToken('cookie-session');
@@ -208,6 +230,24 @@ export default function Admin(){
     return matchesType && matchesSearch && matchesTab;
   });
 
+  // Filter and paginate submissions (client-side)
+  const filteredSubs = (subsMaster || []).filter(s=>{
+    try{
+      const name = (s.name||'').toLowerCase();
+      if(searchTerm && !name.includes(searchTerm.trim().toLowerCase())) return false;
+      if(dateFrom){ const from = new Date(dateFrom + 'T00:00:00'); if(new Date(s.createdAt) < from) return false; }
+      if(dateTo){ const to = new Date(dateTo + 'T23:59:59.999'); if(new Date(s.createdAt) > to) return false; }
+      return true;
+    }catch(e){ return false; }
+  });
+  const totalCount = filteredSubs.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const pageSafe = Math.min(Math.max(1, page), totalPages);
+  const pagedSubs = filteredSubs.slice((pageSafe-1)*pageSize, pageSafe*pageSize);
+
+  // reset page when filters change
+  useEffect(()=>{ setPage(1); },[searchTerm, dateFrom, dateTo, subsMaster]);
+
   if(!authChecked) return null;
   if(!token) return null;
 
@@ -234,6 +274,12 @@ export default function Admin(){
                 <button className={activeTab==='questions' ? 'btn-primary' : 'btn-secondary'} onClick={()=>setActiveTab('questions')}>Perguntas</button>
                 <button className={activeTab==='users' ? 'btn-primary' : 'btn-secondary'} onClick={()=>setActiveTab('users')}>Usuários</button>
               </div>
+              <div style={{display:'flex',gap:8,alignItems:'center',marginLeft:8}}>
+                <input type="date" value={dateFromInput} onChange={e=>setDateFromInput(e.target.value)} style={{background:'#fff',color:'#111',border:'1px solid rgba(0,0,0,0.12)',padding:8,borderRadius:8}} />
+                <input type="date" value={dateToInput} onChange={e=>setDateToInput(e.target.value)} style={{background:'#fff',color:'#111',border:'1px solid rgba(0,0,0,0.12)',padding:8,borderRadius:8}} />
+                <button className="btn-secondary" onClick={applyFilters} style={{padding:'6px 8px',fontSize:13}}>Filtrar</button>
+                <button className="btn-ghost" onClick={clearFilters} style={{padding:'6px 8px',fontSize:13}}>Limpar</button>
+              </div>
               <div style={{marginLeft:'auto',color:'var(--muted)'}}> {subsMaster.length} submissões totais</div>
             </div>
 
@@ -242,72 +288,87 @@ export default function Admin(){
               <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,padding:12}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
                   <strong>Submissões</strong>
-                  <div style={{color:'var(--muted)',fontSize:13}}>{subs.length} registros</div>
+                  <div style={{color:'var(--muted)',fontSize:13}}>{totalCount} registros</div>
                 </div>
                 {loading ? <div>Carregando...</div> : (
-                  <div style={{overflowX:'auto'}}>
-                    <table style={{width:'100%',borderCollapse:'collapse'}}>
-                      <thead>
-                        <tr style={{textAlign:'left',color:'var(--muted)',fontSize:13}}>
-                          <th style={{padding:'8px 6px'}}>Nome</th>
-                            <th style={{padding:'8px 6px'}}>Tipo</th>
-                          <th style={{padding:'8px 6px'}}>Data</th>
-                          <th style={{padding:'8px 6px'}}>Score</th>
-                          <th style={{padding:'8px 6px'}}>Sinalizadores</th>
-                          <th style={{padding:'8px 6px'}}></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {subs.map(s=> (
-                          <tr key={s._id} style={{borderTop:'1px solid var(--border)'}}>
-                            <td style={{padding:10}}>{s.name}</td>
-                            <td style={{padding:10,color:'var(--muted)'}}>{s.test_type || 'antigo'}</td>
-                            <td style={{padding:10,color:'var(--muted)'}}>{new Date(s.createdAt).toLocaleString('pt-BR')}</td>
-                            <td style={{padding:10}}>{(()=>{
-                              try{
-                                const dims = s.dims || {};
-                                const dimMax = s.dimMax || {};
-                                const keys = Object.keys(dimMax).length ? Object.keys(dimMax) : Object.keys(dims || {});
-                                if(!keys || keys.length === 0) return (s.pct || 0) + '%';
-                                const pcts = keys.map(k=>{
-                                  const raw = dims[k] || 0;
-                                  const denom = dimMax[k] || 1;
-                                  let val = 0;
-                                  if(String(k||'').toLowerCase().includes('risco')){
-                                    // val is risk percentage (higher = worse)
-                                    val = denom > 0 ? ((denom - raw) / denom) * 100 : 0;
-                                  } else {
-                                    // val is positive competency percentage (higher = better)
-                                    val = denom > 0 ? (raw/denom)*100 : 0;
-                                  }
-                                  // For overall score we want a "higher is better" metric:
-                                  const goodness = String(k||'').toLowerCase().includes('risco') ? (100 - val) : val;
-                                  return Math.round(goodness*10)/10;
-                                });
-                                const mean = Math.round((pcts.reduce((a,b)=>a+b,0)/pcts.length)*10)/10;
-                                return mean + '%';
-                              }catch(_e){ return (s.pct || 0) + '%'; }
-                            })()}</td>
-                            <td style={{padding:10,color:'var(--muted)'}}>{Array.from(new Set((s.flags||[]).map(f=>f.flag))).filter(Boolean).join(', ')}</td>
-                            <td style={{padding:10,textAlign:'right'}}>
-  <div style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
-    
-    <button 
-      className="btn-primary" 
-                      onClick={()=>downloadPdf(s)} 
-                      disabled={isGeneratingPdf}
-                      style={{padding:'8px 10px',fontSize:13,opacity: isGeneratingPdf ? 0.6 : 1,cursor: isGeneratingPdf ? 'not-allowed' : 'pointer'}}
-                    >
-                      {isGeneratingPdf ? 'Gerando...' : 'PDF'}
-                    </button>
-
-
-  </div>
-</td>
+                  <div>
+                    <div style={{overflowX:'auto'}}>
+                      <table style={{width:'100%',borderCollapse:'collapse'}}>
+                        <thead>
+                          <tr style={{textAlign:'left',color:'var(--muted)',fontSize:13}}>
+                            <th style={{padding:'8px 6px'}}>Nome</th>
+                              <th style={{padding:'8px 6px'}}>Tipo</th>
+                            <th style={{padding:'8px 6px'}}>Data</th>
+                            <th style={{padding:'8px 6px'}}>Score</th>
+                            <th style={{padding:'8px 6px'}}>Sinalizadores</th>
+                            <th style={{padding:'8px 6px'}}></th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {pagedSubs.map(s=> (
+                            <tr key={s._id || s.id} style={{borderTop:'1px solid var(--border)'}}>
+                              <td style={{padding:10}}>{s.name}</td>
+                              <td style={{padding:10,color:'var(--muted)'}}>{s.test_type || 'antigo'}</td>
+                              <td style={{padding:10,color:'var(--muted)'}}>{new Date(s.createdAt).toLocaleString('pt-BR')}</td>
+                              <td style={{padding:10}}>{(()=>{
+                                try{
+                                  const dims = s.dims || {};
+                                  const dimMax = s.dimMax || {};
+                                  const keys = Object.keys(dimMax).length ? Object.keys(dimMax) : Object.keys(dims || {});
+                                  if(!keys || keys.length === 0) return (s.pct || 0) + '%';
+                                  const pcts = keys.map(k=>{
+                                    const raw = dims[k] || 0;
+                                    const denom = dimMax[k] || 1;
+                                    let val = 0;
+                                    if(String(k||'').toLowerCase().includes('risco')){
+                                      val = denom > 0 ? ((denom - raw) / denom) * 100 : 0;
+                                    } else {
+                                      val = denom > 0 ? (raw/denom)*100 : 0;
+                                    }
+                                    const goodness = String(k||'').toLowerCase().includes('risco') ? (100 - val) : val;
+                                    return Math.round(goodness*10)/10;
+                                  });
+                                  const mean = Math.round((pcts.reduce((a,b)=>a+b,0)/pcts.length)*10)/10;
+                                  return mean + '%';
+                                }catch(_e){ return (s.pct || 0) + '%'; }
+                              })()}</td>
+                              <td style={{padding:10,color:'var(--muted)'}}>{Array.from(new Set((s.flags||[]).map(f=>f.flag))).filter(Boolean).join(', ')}</td>
+                              <td style={{padding:10,textAlign:'right'}}>
+                                <div style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
+                                  <button
+                                    className="btn-primary"
+                                    onClick={()=>downloadPdf(s)}
+                                    disabled={isGeneratingPdf}
+                                    style={{padding:'8px 10px',fontSize:13,opacity: isGeneratingPdf ? 0.6 : 1,cursor: isGeneratingPdf ? 'not-allowed' : 'pointer'}}
+                                  >
+                                    {isGeneratingPdf ? 'Gerando...' : 'PDF'}
+                                  </button>
+
+                                  <button
+                                    className="btn-secondary"
+                                    onClick={()=>deleteReport(s._id || s.id)}
+                                    style={{padding:'8px 10px',fontSize:13,borderColor:'rgba(224,92,92,.35)',color:'#f2b7b7'}}
+                                  >
+                                    Excluir
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:10}}>
+                      <div style={{color:'var(--muted)'}}>
+                        Mostrando { (pageSafe-1)*pageSize + (pagedSubs.length ? 1 : 0) } - { (pageSafe-1)*pageSize + pagedSubs.length } de {totalCount}
+                      </div>
+                      <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                        <button className="btn-secondary" onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={pageSafe<=1}>Anterior</button>
+                        <div style={{color:'var(--muted)'}}>Página {pageSafe} / {totalPages}</div>
+                        <button className="btn-secondary" onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={pageSafe>=totalPages}>Próxima</button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -315,10 +376,11 @@ export default function Admin(){
               <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,padding:12}}>
                 <div style={{display:'flex',flexDirection:'column',gap:8}}>
                   <strong>Ferramentas</strong>
-                  <div style={{display:'flex',gap:8}}>
-                    <input placeholder="Buscar por nome" onChange={e=>{ const q=e.target.value.toLowerCase(); if(!q) return setSubs(subsMaster); setSubs(subsMaster.filter(x=> (x.name||'').toLowerCase().includes(q))); }} style={{flex:1,background:'var(--surface2)',border:'1px solid var(--border)',padding:8,borderRadius:8,color:'var(--text)'}} />
+                  <div style={{display:'flex',gap:8,flexDirection:'column'}}>
+                    <input placeholder="Buscar por nome" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border)',padding:8,borderRadius:8,color:'var(--text)'}} />
+                    <div style={{marginTop:6,color:'var(--muted)',fontSize:13}}>{dateFrom || dateTo ? `Filtro aplicado: ${dateFrom || '---'} → ${dateTo || '---'}` : 'Sem filtro de data aplicado'}</div>
                   </div>
-                  <div style={{marginTop:8,color:'var(--muted)',fontSize:13}}>Selecione uma submissão para gerar o PDF ou use o gerenciador de perguntas.</div>
+                  <div style={{marginTop:8,color:'var(--muted)',fontSize:13}}>Filtre por nome ou intervalo de datas e navegue entre páginas (15 registros por página).</div>
                 </div>
               </div>
             </div>

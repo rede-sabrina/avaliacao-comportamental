@@ -8,6 +8,7 @@ export default function Home(){
   const [candidateName, setCandidateName] = useState('');
   const [started, setStarted] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedTest, setSelectedTest] = useState(null);
   const [showTestSelection, setShowTestSelection] = useState(true);
   
@@ -93,7 +94,7 @@ export default function Home(){
 
   function startQuiz(){ setStarted(true); setCurrent(0); }
 
-  function nextQ(){ if(current < questions.length-1) setCurrent(c=>c+1); else submitResult(); }
+  function nextQ(){ if(isSubmitting) return; if(current < questions.length-1) setCurrent(c=>c+1); else submitResult(); }
   function prevQ(){ if(current>0) setCurrent(c=>c-1); }
 
   function calcScore(){
@@ -154,6 +155,8 @@ export default function Home(){
   }
 
   async function submitResult(){
+    if(isSubmitting) return;
+    setIsSubmitting(true);
     const now = new Date();
     const { pct, flags, dims, dimMax } = calcScore();
     const openAnswers = questions
@@ -171,6 +174,7 @@ export default function Home(){
 
     setStarted(false);
     setCompleted(true);
+    setIsSubmitting(false);
   }
 
   function buildReportHtml({ candidateName, pct, flags, dims, dimMax, dateStr, openAnswers }){
@@ -417,8 +421,8 @@ export default function Home(){
             </div>
 
             <div className="nav-row">
-              <button className="btn-secondary" onClick={prevQ} style={{visibility: current>0 ? 'visible' : 'hidden'}}>← Voltar</button>
-              <button className="btn-primary" onClick={nextQ} disabled={!refreshNextEnabled(current)} style={{maxWidth:220}}>{current === questions.length-1 ? 'Finalizar avaliação ✓' : 'Próxima →'}</button>
+              <button className="btn-secondary" onClick={prevQ} style={{visibility: current>0 ? 'visible' : 'hidden'}} disabled={isSubmitting}>← Voltar</button>
+              <button className="btn-primary" onClick={nextQ} disabled={!refreshNextEnabled(current) || isSubmitting} style={{maxWidth:220}}>{isSubmitting ? 'Enviando...' : (current === questions.length-1 ? 'Finalizar avaliação ✓' : 'Próxima →')}</button>
             </div>
           </div>
         </div>
@@ -433,6 +437,20 @@ export default function Home(){
             <div style={{marginTop:12,display:'flex',gap:8,justifyContent:'center'}}>
               <button className="btn-primary" onClick={()=>{ setShowTestSelection(true); setCompleted(false); setSelectedTest(null); setAnswers([]); setCurrent(0); setStarted(false); }} style={{padding:'10px 16px'}}>Voltar ao início</button>
             </div>
+          </div>
+        </div>
+      )}
+      {isSubmitting && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1200}}>
+          <div style={{background:'#fff',color:'#111',padding:22,borderRadius:10,display:'flex',flexDirection:'column',alignItems:'center',gap:10,boxShadow:'0 6px 30px rgba(0,0,0,0.25)'}}>
+            <div style={{fontSize:18,fontWeight:700}}>⏳ Enviando respostas</div>
+            <div style={{fontSize:13,color:'#666'}}>Aguarde enquanto processamos seu envio...</div>
+            <div style={{marginTop:8,display:'flex',gap:6}}>
+              <div style={{width:8,height:8,borderRadius:'50%',background:'#1a7f6e',animation:'pulse 1.4s infinite'}}></div>
+              <div style={{width:8,height:8,borderRadius:'50%',background:'#1a7f6e',animation:'pulse 1.4s infinite',animationDelay:'0.2s'}}></div>
+              <div style={{width:8,height:8,borderRadius:'50%',background:'#1a7f6e',animation:'pulse 1.4s infinite',animationDelay:'0.4s'}}></div>
+            </div>
+            <style>{`@keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }`}</style>
           </div>
         </div>
       )}
