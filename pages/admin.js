@@ -74,6 +74,13 @@ export default function Admin(){
     }catch(e){ console.warn(e); }
   }
 
+  function formatCPF(cpf){
+    if(!cpf) return '';
+    const s = String(cpf).replace(/\D/g,'');
+    if(s.length !== 11) return cpf;
+    return `${s.slice(0,3)}.${s.slice(3,6)}.${s.slice(6,9)}-${s.slice(9)}`;
+  }
+
   function openNewQuestion(){ setQModal({ open:true, data: { type:'options', text:'', options:[], dimension:'', catClass:'cat-val', test_type: 'antigo' } }); }
 
   function openEditQuestion(q){ setQModal({ open:true, data: q }); }
@@ -297,10 +304,10 @@ export default function Admin(){
                         <thead>
                           <tr style={{textAlign:'left',color:'var(--muted)',fontSize:13}}>
                             <th style={{padding:'8px 6px'}}>Nome</th>
+                              <th style={{padding:'8px 6px'}}>CPF</th>
                               <th style={{padding:'8px 6px'}}>Tipo</th>
                             <th style={{padding:'8px 6px'}}>Data</th>
                             <th style={{padding:'8px 6px'}}>Score</th>
-                            <th style={{padding:'8px 6px'}}>Sinalizadores</th>
                             <th style={{padding:'8px 6px'}}></th>
                           </tr>
                         </thead>
@@ -308,6 +315,7 @@ export default function Admin(){
                           {pagedSubs.map(s=> (
                             <tr key={s._id || s.id} style={{borderTop:'1px solid var(--border)'}}>
                               <td style={{padding:10}}>{s.name}</td>
+                              <td style={{padding:10,color:'var(--muted)', whiteSpace:'nowrap' }}>{formatCPF(s.cpf)}</td>
                               <td style={{padding:10,color:'var(--muted)'}}>{s.test_type || 'antigo'}</td>
                               <td style={{padding:10,color:'var(--muted)'}}>{new Date(s.createdAt).toLocaleString('pt-BR')}</td>
                               <td style={{padding:10}}>{(()=>{
@@ -332,7 +340,6 @@ export default function Admin(){
                                   return mean + '%';
                                 }catch(_e){ return (s.pct || 0) + '%'; }
                               })()}</td>
-                              <td style={{padding:10,color:'var(--muted)'}}>{Array.from(new Set((s.flags||[]).map(f=>f.flag))).filter(Boolean).join(', ')}</td>
                               <td style={{padding:10,textAlign:'right'}}>
                                 <div style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
                                   <button

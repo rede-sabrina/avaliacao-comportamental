@@ -6,6 +6,7 @@ export default function Home(){
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState([]);
   const [candidateName, setCandidateName] = useState('');
+  const [candidateCpf, setCandidateCpf] = useState('');
   const [started, setStarted] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -13,7 +14,7 @@ export default function Home(){
   const [showTestSelection, setShowTestSelection] = useState(true);
   
 
-  useEffect(()=>{ const savedName = localStorage.getItem('candidate_name') || ''; setCandidateName(savedName); },[]);
+  useEffect(()=>{ const savedName = localStorage.getItem('candidate_name') || ''; const savedCpf = localStorage.getItem('candidate_cpf') || ''; setCandidateName(savedName); setCandidateCpf(savedCpf); },[]);
 
   // fetch questions from backend
   useEffect(()=>{
@@ -65,6 +66,7 @@ export default function Home(){
   },[selectedTest]);
 
   useEffect(()=>{ localStorage.setItem('candidate_name', candidateName); },[candidateName]);
+  useEffect(()=>{ localStorage.setItem('candidate_cpf', candidateCpf); },[candidateCpf]);
 
   function selectOption(qIdx, optIdx){
     const copy = [...answers];
@@ -90,6 +92,18 @@ export default function Home(){
     if(q.type==='calc') return ans !== null && ans !== '';
     if(q.type==='open') return ans && ans.trim().length >= (q.minLength||10);
     return false;
+  }
+
+  function validateCPF(cpf){
+    if(!cpf) return false;
+    const s = String(cpf).replace(/\D/g,'');
+    if(s.length !== 11) return false;
+    if(/^([0-9])\1{10}$/.test(s)) return false;
+    const calc = (arr) => arr.reduce((acc,cur,i)=> acc + Number(cur) * (arr.length+1 - i), 0);
+    const digits = s.split('').map(Number);
+    const dv1 = ((calc(digits.slice(0,9)) * 10) % 11) % 10;
+    const dv2 = ((calc(digits.slice(0,10)) * 10) % 11) % 10;
+    return dv1 === digits[9] && dv2 === digits[10];
   }
 
   function startQuiz(){ setStarted(true); setCurrent(0); }
@@ -164,9 +178,9 @@ export default function Home(){
       .filter((item)=> item.question?.type === 'open');
     // build full report HTML (same look as old index.html)
     const dateStr = now.toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
-    const reportHtml = buildReportHtml({ candidateName: candidateName||'Sem nome', pct, flags, dims, dimMax, dateStr, openAnswers });
+    const reportHtml = buildReportHtml({ candidateName: candidateName||'Sem nome', candidateCpf: candidateCpf||'', pct, flags, dims, dimMax, dateStr, openAnswers });
 
-    const submission = { id: Date.now(), name: candidateName || 'Sem nome', date: now.toISOString(), pct, flags, dims, dimMax, html: reportHtml, test_type: selectedTest || 'antigo' };
+    const submission = { id: Date.now(), name: candidateName || 'Sem nome', cpf: candidateCpf || '', date: now.toISOString(), pct, flags, dims, dimMax, html: reportHtml, test_type: selectedTest || 'antigo' };
     // save local
     try{ const existing = JSON.parse(localStorage.getItem('submissions')||'[]'); existing.push(submission); localStorage.setItem('submissions', JSON.stringify(existing)); }catch(e){ console.error(e); }
     // send server
@@ -177,7 +191,7 @@ export default function Home(){
     setIsSubmitting(false);
   }
 
-  function buildReportHtml({ candidateName, pct, flags, dims, dimMax, dateStr, openAnswers }){
+  function buildReportHtml({ candidateName, candidateCpf, pct, flags, dims, dimMax, dateStr, openAnswers }){
     const DIM_MAX = dimMax || {};
     const dimsList = Object.keys(DIM_MAX).length ? Object.keys(DIM_MAX) : Object.keys(dims || {});
 
@@ -306,7 +320,7 @@ export default function Home(){
 <body>
   <div class="rpt-header">
     <div class="rpt-name">${escapeHtml(candidateName)}</div>
-    <div class="rpt-sub">Relatório • Análise</div>
+    <div class="rpt-sub">Relatório • Análise${candidateCpf ? ' • CPF: ' + escapeHtml(candidateCpf) : ''}</div>
     <div class="rpt-date">Gerado em ${now}</div>
   </div>
 
@@ -382,7 +396,9 @@ export default function Home(){
             <p>Este questionário nos ajuda a entender melhor o seu perfil. Não há respostas certas ou erradas — seja honesto(a).</p>
             <div className="meta-list"><span className="meta-item"><span className="dot"></span> ~8 minutos</span><span className="meta-item"><span className="dot"></span>{questions.length} perguntas</span></div>
             <div className="name-input-wrap"><label>Seu nome completo</label><input value={candidateName} onChange={e=>setCandidateName(e.target.value)} placeholder="Ex: Maria Silva" /></div>
-            <button className="btn-primary" onClick={startQuiz} disabled={candidateName.trim().length < 2 || questions.length === 0}>Iniciar avaliação →</button>
+            <div style={{marginTop:8}} className="name-input-wrap"><label>CPF</label><input value={candidateCpf} onChange={e=>setCandidateCpf(e.target.value)} placeholder="000.000.000-00" /></div>
+            {candidateCpf && !validateCPF(candidateCpf) && <div style={{color:'#dc2626',fontSize:13,marginTop:6}}>CPF inválido</div>}
+            <button className="btn-primary" onClick={startQuiz} disabled={candidateName.trim().length < 2 || questions.length === 0 || !validateCPF(candidateCpf)}>Iniciar avaliação →</button>
             <button className="btn-secondary" onClick={()=>window.location.href='/admin/login'} style={{marginTop:10,width:'100%',justifyContent:'center'}}>Acessar área administrativa</button>
             <button className="btn-secondary" onClick={()=>{setShowTestSelection(true); setCandidateName('');}} style={{marginTop:8,width:'100%',justifyContent:'center',borderColor:'rgba(200,200,200,.3)',color:'var(--muted)'}}>← Trocar de teste</button>
           </div>
