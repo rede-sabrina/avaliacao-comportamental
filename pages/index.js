@@ -173,14 +173,13 @@ export default function Home(){
     setIsSubmitting(true);
     const now = new Date();
     const { pct, flags, dims, dimMax } = calcScore();
-    const openAnswers = questions
-      .map((q, i)=> ({ question: q, answer: answers[i] }))
-      .filter((item)=> item.question?.type === 'open');
+    const fullAnswers = questions.map((q,i) => ({ question: q, answer: answers[i] }));
+    const openAnswers = fullAnswers.filter((item)=> item.question?.type === 'open');
     // build full report HTML (same look as old index.html)
     const dateStr = now.toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
-    const reportHtml = buildReportHtml({ candidateName: candidateName||'Sem nome', candidateCpf: candidateCpf||'', pct, flags, dims, dimMax, dateStr, openAnswers });
+    const reportHtml = buildReportHtml({ candidateName: candidateName||'Sem nome', candidateCpf: candidateCpf||'', pct, flags, dims, dimMax, dateStr, openAnswers, fullAnswers });
 
-    const submission = { id: Date.now(), name: candidateName || 'Sem nome', cpf: candidateCpf || '', date: now.toISOString(), pct, flags, dims, dimMax, html: reportHtml, test_type: selectedTest || 'antigo' };
+    const submission = { id: Date.now(), name: candidateName || 'Sem nome', cpf: candidateCpf || '', date: now.toISOString(), pct, flags, dims, dimMax, html: reportHtml, test_type: selectedTest || 'antigo', answers: fullAnswers };
     // save local
     try{ const existing = JSON.parse(localStorage.getItem('submissions')||'[]'); existing.push(submission); localStorage.setItem('submissions', JSON.stringify(existing)); }catch(e){ console.error(e); }
     // send server
@@ -191,7 +190,7 @@ export default function Home(){
     setIsSubmitting(false);
   }
 
-  function buildReportHtml({ candidateName, candidateCpf, pct, flags, dims, dimMax, dateStr, openAnswers }){
+  function buildReportHtml({ candidateName, candidateCpf, pct, flags, dims, dimMax, dateStr, openAnswers, fullAnswers }){
     const DIM_MAX = dimMax || {};
     const dimsList = Object.keys(DIM_MAX).length ? Object.keys(DIM_MAX) : Object.keys(dims || {});
 
@@ -284,7 +283,39 @@ export default function Home(){
       flagsHTML = uniqueFlags.map(f=>{ const m = flagMeta[f.flag] || { icon:'⚠️', label:f.flag, desc:'' }; return `<div class="flag-item"><span class="flag-icon">${m.icon}</span><div class="flag-text"><strong>${m.label}</strong><span>${m.desc}</span></div></div>`; }).join('');
     }
 
-    const openAnswersHTML = (openAnswers && openAnswers.length>0) ? openAnswers.map((it,idx)=>`<div class="flag-item"><span class="flag-icon">✍️</span><div class="flag-text"><strong>${escapeHtml(it.question?.text||'Pergunta')}</strong><span>${escapeHtml(String(it.answer||'(sem resposta)'))}</span></div></div>`).join('') : '';
+    // Render all answers grouped by dimension (category) for PDF/report
+    const formatAnswer = (item)=>{
+      const q = item.question;
+      const ans = item.answer;
+      if(q.type==='options'){
+        if(ans!==null && q.options && q.options[ans]){
+          return escapeHtml(q.options[ans].text || String(q.options[ans].score||''));
+        }
+        return '(sem resposta)';
+      }
+      if(q.type==='calc'){
+        return ans!==null && ans!==undefined ? escapeHtml(String(ans)) : '(sem resposta)';
+      }
+      // open or other types
+      return escapeHtml(String(ans || '(sem resposta)'));
+    };
+    // Group answers by question.dimension (fallback to 'Outros')
+    const answersByDim = {};
+    if(fullAnswers && fullAnswers.length){
+      fullAnswers.forEach(it=>{
+        const dim = it.question?.dimension || 'Outros';
+        if(!answersByDim[dim]) answersByDim[dim]=[];
+        answersByDim[dim].push(it);
+      });
+    }
+    // Build HTML for each dimension with spacing and a simple emoji header
+    const fullAnswersHTML = Object.entries(answersByDim).map(([dim, items])=>{
+      const header = `<h3 class="answers-header">📋 ${escapeHtml(dim)}</h3>`;
+      const list = items.map(it=>`<div class=\"flag-item\"><span class=\"flag-icon\">✍️</span><div class=\"flag-text\"><strong>${escapeHtml(it.question?.text||'Pergunta')}</strong><span>${formatAnswer(it)}</span></div></div>`).join('');
+      // Wrap each dimension block for styling
+      return `<div class=\"answers-section\">${header}${list}</div>`;
+    }).join('');
+
 
     const now = dateStr || new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
 
@@ -313,6 +344,8 @@ export default function Home(){
     .dim-card.danger{border-left-color:var(--red)}.dim-card.warn{border-left-color:var(--yellow)}
     .dim-card-title{font-size:14px;font-weight:700;margin-bottom:6px}
     .flag-item{display:flex;gap:10px;padding:8px 0;border-top:1px solid rgba(0,0,0,0.03)}.flag-icon{width:30px}
+    .answers-section{margin-top:16px;padding-top:8px;border-top:1px solid var(--border)}
+    .answers-header{font-size:16px;font-weight:600;margin-bottom:8px;color:var(--teal)}
     .flag-text strong{display:block}
     .btn-pdf{display:inline-block;padding:10px 18px;background:var(--teal);color:#fff;border-radius:999px;border:none}
   </style>
@@ -329,7 +362,7 @@ export default function Home(){
     <div class="bar-chart">${barsHTML}</div>
     ${cardsHTML}
     <div class="flags-section"><h3>⚑ Sinalizadores (${uniqueFlags.length})</h3>${flagsHTML}</div>
-    ${openAnswersHTML}
+    ${fullAnswersHTML}
   </div>
 
   <div style="text-align:center;margin-top:8px"><button class="btn-pdf">⬇️ Baixar relatório em PDF</button></div>
