@@ -405,6 +405,15 @@ export default function Home(){
                   <div style={{fontWeight:600,marginBottom:4}}>⚖️ Teste de Ética</div>
                   <div style={{fontSize:13,opacity:0.9}}>Avaliação de integridade, honestidade e conformidade</div>
               </button>
+
+              <button 
+                className="btn-secondary select-btn" 
+                  onClick={()=>{setSelectedTest('estilo-comportamento'); setShowTestSelection(false); window.location.href='/behavior-style';}}
+                style={{padding:'16px 20px',fontSize:16,height:'auto',borderColor:'var(--teal)',color:'var(--teal)'}}
+              >
+                  <div style={{fontWeight:600,marginBottom:4}}>📊 Teste de Estilo de Comportamento</div>
+                  <div style={{fontSize:13,opacity:0.9}}>Avaliação DISC: Dominância, Influência, Estabilidade, Conformidade</div>
+              </button>
             </div>
 
             <div style={{marginTop:16,display:'flex',justifyContent:'center'}}>

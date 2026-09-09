@@ -10,7 +10,7 @@ export default function Admin(){
   const [questions, setQuestions] = useState([]);
   const [questionSearch, setQuestionSearch] = useState('');
   const [questionTypeFilter, setQuestionTypeFilter] = useState('all');
-  const [questionTab, setQuestionTab] = useState('antigo'); // 'antigo' | 'comportamental' | 'etica' | 'all'
+  const [questionTab, setQuestionTab] = useState('antigo'); // 'antigo' | 'comportamental' | 'etica' | 'estilo-comportamento' | 'all'
   const [users, setUsers] = useState([]);
   const [userForm, setUserForm] = useState({ name:'', username:'', email:'', role:'admin', password:'', active:true });
   const [editingUserId, setEditingUserId] = useState('');
@@ -233,7 +233,8 @@ export default function Admin(){
     let matchesTab = true;
     if(questionTab === 'comportamental') matchesTab = q.test_type === 'comportamental';
     else if(questionTab === 'etica') matchesTab = q.test_type === 'etica';
-    else if(questionTab === 'antigo') matchesTab = !(q.test_type === 'comportamental' || q.test_type === 'etica');
+    else if(questionTab === 'estilo-comportamento') matchesTab = q.test_type === 'estilo-comportamento';
+    else if(questionTab === 'antigo') matchesTab = !(q.test_type === 'comportamental' || q.test_type === 'etica' || q.test_type === 'estilo-comportamento');
     return matchesType && matchesSearch && matchesTab;
   });
 
@@ -318,28 +319,36 @@ export default function Admin(){
                               <td style={{padding:10,color:'var(--muted)', whiteSpace:'nowrap' }}>{formatCPF(s.cpf)}</td>
                               <td style={{padding:10,color:'var(--muted)'}}>{s.test_type || 'antigo'}</td>
                               <td style={{padding:10,color:'var(--muted)'}}>{new Date(s.createdAt).toLocaleString('pt-BR')}</td>
-                              <td style={{padding:10}}>{(()=>{
-                                try{
-                                  const dims = s.dims || {};
-                                  const dimMax = s.dimMax || {};
-                                  const keys = Object.keys(dimMax).length ? Object.keys(dimMax) : Object.keys(dims || {});
-                                  if(!keys || keys.length === 0) return (s.pct || 0) + '%';
-                                  const pcts = keys.map(k=>{
-                                    const raw = dims[k] || 0;
-                                    const denom = dimMax[k] || 1;
-                                    let val = 0;
-                                    if(String(k||'').toLowerCase().includes('risco')){
-                                      val = denom > 0 ? ((denom - raw) / denom) * 100 : 0;
-                                    } else {
-                                      val = denom > 0 ? (raw/denom)*100 : 0;
-                                    }
-                                    const goodness = String(k||'').toLowerCase().includes('risco') ? (100 - val) : val;
-                                    return Math.round(goodness*10)/10;
-                                  });
-                                  const mean = Math.round((pcts.reduce((a,b)=>a+b,0)/pcts.length)*10)/10;
-                                  return mean + '%';
-                                }catch(_e){ return (s.pct || 0) + '%'; }
-                              })()}</td>
+<td style={{padding:10}}>{(()=>{
+                                 try{
+                                   // Behavior style results have scores object with percentage values directly
+                                   if(s.test_type === 'estilo-comportamento' && s.scores){
+                                     const scores = s.scores;
+                                     const keys = Object.keys(scores);
+                                     if(keys.length === 0) return (s.pct || 0) + '%';
+                                     const mean = Math.round((keys.reduce((sum, k) => sum + (scores[k] || 0), 0) / keys.length) * 10) / 10;
+                                     return mean + '%';
+                                   }
+                                   const dims = s.dims || {};
+                                   const dimMax = s.dimMax || {};
+                                   const keys = Object.keys(dimMax).length ? Object.keys(dimMax) : Object.keys(dims || {});
+                                   if(!keys || keys.length === 0) return (s.pct || 0) + '%';
+                                   const pcts = keys.map(k=>{
+                                     const raw = dims[k] || 0;
+                                     const denom = dimMax[k] || 1;
+                                     let val = 0;
+                                     if(String(k||'').toLowerCase().includes('risco')){
+                                       val = denom > 0 ? ((denom - raw) / denom) * 100 : 0;
+                                     } else {
+                                       val = denom > 0 ? (raw/denom)*100 : 0;
+                                     }
+                                     const goodness = String(k||'').toLowerCase().includes('risco') ? (100 - val) : val;
+                                     return Math.round(goodness*10)/10;
+                                   });
+                                   const mean = Math.round((pcts.reduce((a,b)=>a+b,0)/pcts.length)*10)/10;
+                                   return mean + '%';
+                                 }catch(_e){ return (s.pct || 0) + '%'; }
+                               })()}</td>
                               <td style={{padding:10,textAlign:'right'}}>
                                 <div style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
                                   <button
@@ -450,6 +459,7 @@ export default function Admin(){
                 <button className={questionTab==='antigo' ? 'btn-primary' : 'btn-secondary'} onClick={()=>setQuestionTab('antigo')}>Relatório antigo</button>
                 <button className={questionTab==='comportamental' ? 'btn-primary' : 'btn-secondary'} onClick={()=>setQuestionTab('comportamental')}>Comportamental</button>
                 <button className={questionTab==='etica' ? 'btn-primary' : 'btn-secondary'} onClick={()=>setQuestionTab('etica')}>Ética</button>
+                <button className={questionTab==='estilo-comportamento' ? 'btn-primary' : 'btn-secondary'} onClick={()=>setQuestionTab('estilo-comportamento')}>Estilo Comportamento</button>
                 <button className={questionTab==='all' ? 'btn-primary' : 'btn-secondary'} onClick={()=>setQuestionTab('all')}>Todas</button>
               </div>
               <div style={{marginLeft:'auto',color:'var(--muted)'}}>

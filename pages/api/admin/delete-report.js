@@ -13,17 +13,28 @@ export default async function handler(req, res){
   try{
     const client = await clientPromise;
     const db = client.db(process.env.MONGODB_DB || 'avaliacao');
-    const col = db.collection('submissions');
+    const submissionsCol = db.collection('submissions');
+    const behaviorCol = db.collection('behavior_style_results');
 
-    // Admin UI sends Mongo _id; fallback keeps compatibility with legacy numeric id.
+    // Try submissions first
     let result = null;
     if(ObjectId.isValid(String(id))){
-      result = await col.deleteOne({ _id: new ObjectId(String(id)) });
+      result = await submissionsCol.deleteOne({ _id: new ObjectId(String(id)) });
     }
     if(!result || result.deletedCount === 0){
-      result = await col.deleteOne({ id: String(id) });
+      result = await submissionsCol.deleteOne({ id: String(id) });
       if(result.deletedCount === 0 && !Number.isNaN(Number(id))){
-        result = await col.deleteOne({ id: Number(id) });
+        result = await submissionsCol.deleteOne({ id: Number(id) });
+      }
+    }
+
+    // If not found, try behavior_style_results
+    if(!result || result.deletedCount === 0){
+      if(ObjectId.isValid(String(id))){
+        result = await behaviorCol.deleteOne({ _id: new ObjectId(String(id)) });
+      }
+      if(!result || result.deletedCount === 0){
+        result = await behaviorCol.deleteOne({ candidateId: String(id) });
       }
     }
 

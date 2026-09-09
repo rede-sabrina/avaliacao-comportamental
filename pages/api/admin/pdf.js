@@ -43,18 +43,31 @@ export default async function handler(req,res){
   try{
     const client = await clientPromise;
     const db = client.db(process.env.MONGODB_DB || 'avaliacao');
-    const col = db.collection('submissions');
+    const submissionsCol = db.collection('submissions');
+    const behaviorCol = db.collection('behavior_style_results');
     
-    // Try to find by _id (ObjectId) first, then fallback to id (string or number)
+    // Try to find in submissions first
     let doc = null;
+    let collection = 'submissions';
     if(ObjectId.isValid(String(id))){
-      doc = await col.findOne({ _id: new ObjectId(String(id)) });
+      doc = await submissionsCol.findOne({ _id: new ObjectId(String(id)) });
     }
     if(!doc){
-      doc = await col.findOne({ id: String(id) });
+      doc = await submissionsCol.findOne({ id: String(id) });
     }
     if(!doc && !Number.isNaN(Number(id))){
-      doc = await col.findOne({ id: Number(id) });
+      doc = await submissionsCol.findOne({ id: Number(id) });
+    }
+    
+    // If not found, try behavior_style_results
+    if(!doc){
+      collection = 'behavior_style_results';
+      if(ObjectId.isValid(String(id))){
+        doc = await behaviorCol.findOne({ _id: new ObjectId(String(id)) });
+      }
+      if(!doc){
+        doc = await behaviorCol.findOne({ candidateId: String(id) });
+      }
     }
     if(!doc) return res.status(404).json({ error:'not found' });
 
