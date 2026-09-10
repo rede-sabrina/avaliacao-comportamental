@@ -160,7 +160,10 @@ export default function BehaviorStyleTest() {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Erro ao enviar');
+      if (!response.ok) {
+        console.error('Submit error:', data);
+        throw new Error(data.error || `Erro ${response.status}: ${JSON.stringify(data)}`);
+      }
 
       // Redirecionar para página de resultado
       window.location.href = `/behavior-style-result?candidateId=${encodeURIComponent(candidateId)}`;
