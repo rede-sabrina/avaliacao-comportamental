@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     try {
       const data = req.body || {};
       console.log('POST /api/behavior-style received:', JSON.stringify(data, null, 2).substring(0, 500));
-      const result = await submitBehaviorStyleTest(data);
+      const result = await submitBehaviorStyleTest({ ...data, tipo_avaliacao: data.tipo_avaliacao || 'candidato' });
       return res.status(201).json({ ok: true, attemptNumber: result.attemptNumber, result });
     } catch (e) {
       console.error('POST /api/behavior-style error', e);

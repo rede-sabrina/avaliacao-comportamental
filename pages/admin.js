@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { LOJAS } from '../lib/auth.js';
 
 export default function Admin(){
   const [authChecked, setAuthChecked] = useState(false);
@@ -11,6 +12,8 @@ export default function Admin(){
   const [questionSearch, setQuestionSearch] = useState('');
   const [questionTypeFilter, setQuestionTypeFilter] = useState('all');
   const [questionTab, setQuestionTab] = useState('antigo'); // 'antigo' | 'comportamental' | 'etica' | 'estilo-comportamento' | 'all'
+  const [evalTypeFilter, setEvalTypeFilter] = useState('all'); // 'all' | 'candidato' | 'funcionario'
+  const [storeFilter, setStoreFilter] = useState('all'); // 'all' | '01'...'15'
   const [users, setUsers] = useState([]);
   const [userForm, setUserForm] = useState({ name:'', username:'', email:'', role:'admin', password:'', active:true });
   const [editingUserId, setEditingUserId] = useState('');
@@ -35,7 +38,7 @@ export default function Admin(){
   }
 
   function clearFilters(){
-    setDateFrom(''); setDateTo(''); setDateFromInput(''); setDateToInput(''); setSearchTerm(''); setPage(1);
+    setDateFrom(''); setDateTo(''); setDateFromInput(''); setDateToInput(''); setSearchTerm(''); setEvalTypeFilter('all'); setStoreFilter('all'); setPage(1);
   }
 
   useEffect(()=>{
@@ -245,6 +248,9 @@ export default function Admin(){
       if(searchTerm && !name.includes(searchTerm.trim().toLowerCase())) return false;
       if(dateFrom){ const from = new Date(dateFrom + 'T00:00:00'); if(new Date(s.createdAt) < from) return false; }
       if(dateTo){ const to = new Date(dateTo + 'T23:59:59.999'); if(new Date(s.createdAt) > to) return false; }
+      const tipo = s.tipo_avaliacao || 'candidato';
+      if(evalTypeFilter !== 'all' && tipo !== evalTypeFilter) return false;
+      if(storeFilter !== 'all' && String(s.loja_id || '') !== String(storeFilter)) return false;
       return true;
     }catch(e){ return false; }
   });
@@ -254,7 +260,7 @@ export default function Admin(){
   const pagedSubs = filteredSubs.slice((pageSafe-1)*pageSize, pageSafe*pageSize);
 
   // reset page when filters change
-  useEffect(()=>{ setPage(1); },[searchTerm, dateFrom, dateTo, subsMaster]);
+  useEffect(()=>{ setPage(1); },[searchTerm, dateFrom, dateTo, evalTypeFilter, storeFilter, subsMaster]);
 
   if(!authChecked) return null;
   if(!token) return null;
@@ -306,6 +312,7 @@ export default function Admin(){
                           <tr style={{textAlign:'left',color:'var(--muted)',fontSize:13}}>
                             <th style={{padding:'8px 6px'}}>Nome</th>
                               <th style={{padding:'8px 6px'}}>CPF</th>
+                              <th style={{padding:'8px 6px'}}>Origem</th>
                               <th style={{padding:'8px 6px'}}>Tipo</th>
                             <th style={{padding:'8px 6px'}}>Data</th>
                             <th style={{padding:'8px 6px'}}>Score</th>
@@ -317,6 +324,13 @@ export default function Admin(){
                             <tr key={s._id || s.id} style={{borderTop:'1px solid var(--border)'}}>
                               <td style={{padding:10}}>{s.name}</td>
                               <td style={{padding:10,color:'var(--muted)', whiteSpace:'nowrap' }}>{formatCPF(s.cpf)}</td>
+                              <td style={{padding:10}}>
+                                {s.tipo_avaliacao === 'funcionario' ? (
+                                  <span style={{background:'rgba(240,180,41,.15)',color:'#f0b429',borderRadius:12,padding:'2px 8px',fontSize:11,fontWeight:700}}>Loja {s.loja_id || '—'}</span>
+                                ) : (
+                                  <span style={{background:'rgba(169,164,191,.15)',color:'#a9a4bf',borderRadius:12,padding:'2px 8px',fontSize:11}}>Candidato</span>
+                                )}
+                              </td>
                               <td style={{padding:10,color:'var(--muted)'}}>{s.test_type || 'antigo'}</td>
                               <td style={{padding:10,color:'var(--muted)'}}>{new Date(s.createdAt).toLocaleString('pt-BR')}</td>
 <td style={{padding:10}}>{(()=>{
@@ -394,6 +408,19 @@ export default function Admin(){
                   <strong>Ferramentas</strong>
                   <div style={{display:'flex',gap:8,flexDirection:'column'}}>
                     <input placeholder="Buscar por nome" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border)',padding:8,borderRadius:8,color:'var(--text)'}} />
+                    <select value={evalTypeFilter} onChange={e=>setEvalTypeFilter(e.target.value)} style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border)',padding:8,borderRadius:8,color:'var(--text)',fontSize:13}}>
+                      <option value="all">Todas as avaliações</option>
+                      <option value="candidato">Apenas Candidatos</option>
+                      <option value="funcionario">Apenas Colaboradores (Lojas)</option>
+                    </select>
+                    {evalTypeFilter === 'funcionario' && (
+                      <select value={storeFilter} onChange={e=>setStoreFilter(e.target.value)} style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border)',padding:8,borderRadius:8,color:'var(--text)',fontSize:13}}>
+                        <option value="all">Todas as 15 Lojas</option>
+                        {LOJAS.map(l => (
+                          <option key={l.id} value={l.id}>{l.name}</option>
+                        ))}
+                      </select>
+                    )}
                     <div style={{marginTop:6,color:'var(--muted)',fontSize:13}}>{dateFrom || dateTo ? `Filtro aplicado: ${dateFrom || '---'} → ${dateTo || '---'}` : 'Sem filtro de data aplicado'}</div>
                   </div>
                   <div style={{marginTop:8,color:'var(--muted)',fontSize:13}}>Filtre por nome ou intervalo de datas e navegue entre páginas (15 registros por página).</div>

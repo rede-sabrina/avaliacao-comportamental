@@ -23,8 +23,10 @@ export default async function handler(req,res){
       ...doc,
       _id: doc._id,
       id: doc._id,
-      name: doc.candidateName,
+      name: doc.nome_funcionario || doc.candidateName,
       cpf: doc.candidateCpf,
+      tipo_avaliacao: doc.tipo_avaliacao || 'candidato',
+      loja_id: doc.loja_id || null,
       test_type: 'estilo-comportamento',
       pct: doc.total || 100,
       dims: doc.scores || {},
@@ -38,9 +40,15 @@ export default async function handler(req,res){
       html: doc.html,
       createdAt: doc.completedAt || doc.createdAt
     }));
+
+    const normalizedSubmissions = submissions.map(doc => ({
+      ...doc,
+      tipo_avaliacao: doc.tipo_avaliacao || 'candidato',
+      loja_id: doc.loja_id || null
+    }));
     
     // Merge and sort by date
-    const allDocs = [...submissions, ...normalizedBehavior].sort((a, b) => 
+    const allDocs = [...normalizedSubmissions, ...normalizedBehavior].sort((a, b) => 
       new Date(b.createdAt) - new Date(a.createdAt)
     );
     

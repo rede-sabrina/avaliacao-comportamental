@@ -416,8 +416,32 @@ export default function Home(){
               </button>
             </div>
 
+            <div style={{marginTop:24,borderTop:'1px solid var(--border)',paddingTop:20}}>
+              <div style={{fontSize:12,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:'var(--accent)',marginBottom:12}}>
+                🏢 Avaliação de Colaboradores (Lojas 01 a 15)
+              </div>
+              <div style={{display:'flex',gap:10,flexDirection:'column'}}>
+                <button
+                  className="btn-primary select-btn"
+                  onClick={()=>window.location.href='/funcionario'}
+                  style={{padding:'14px 18px',fontSize:15,height:'auto',background:'linear-gradient(135deg, #1a7f6e, #2a9d88)',color:'#fff'}}
+                >
+                  <div style={{fontWeight:600,marginBottom:2}}>🏢 Iniciar Avaliação de Colaborador</div>
+                  <div style={{fontSize:12,opacity:0.9}}>Acesso direto para colaboradores das 15 lojas</div>
+                </button>
+                <button
+                  className="btn-secondary select-btn"
+                  onClick={()=>window.location.href='/gerente/login'}
+                  style={{padding:'14px 18px',fontSize:15,height:'auto',borderColor:'var(--accent)',color:'var(--accent)'}}
+                >
+                  <div style={{fontWeight:600,marginBottom:2}}>🏪 Acesso do Gerente da Loja</div>
+                  <div style={{fontSize:12,opacity:0.9}}>Painel exclusivo para gerentes das lojas 01 a 15</div>
+                </button>
+              </div>
+            </div>
+
             <div style={{marginTop:16,display:'flex',justifyContent:'center'}}>
-              <button onClick={()=>window.location.href='/admin'} className="select-admin-btn">Painel administrativo</button>
+              <button onClick={()=>window.location.href='/admin'} className="select-admin-btn">Painel administrativo (RH)</button>
             </div>
 
             <style jsx>{`
